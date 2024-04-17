@@ -6,10 +6,7 @@
 ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 (package-initialize)
 
-;; TODO 'C-S-n' and 'C-S-p' should behave like visual-line mode in vim and always go to the beginning of the line
-;; TODO 'C-x-f-r' for 'consult-recent-file'
-;; TODO 'C-x-f-c' to open the init.el
-;; TODO 'C-S-j' should join lines
+;; TODO C-S-n and C-S-p should behave like visual-line mode in vim
 
 
 ;; KEYBINDS
@@ -101,20 +98,21 @@
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
   ;; (doom-themes-visual-bell-config)
-  ;; Enable custom neotree theme (all-the-icons must be installed!)
+    ;; Enable custom neotree theme (all-the-icons must be installed!)
   (doom-themes-neotree-config)
   ;; or for treemacs users
   (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
   (doom-themes-treemacs-config)
   (doom-themes-org-config))
 
- (load-theme 'doom-material-dark t)
+ (load-theme 'doom-one t)
 
 (use-package kaolin-themes
   :ensure t)
 
 (use-package ef-themes
   :ensure t)
+
 
 (defvar dark-themes '(doom-badger doom-pine doom-laserwave doom-one doom-1337 doom-nord doom-dark+ doom-henna doom-opera doom-rouge doom-xcode
 				  doom-snazzy doom-Iosvkem doom-dracula doom-gruvbox doom-horizon doom-lantern doom-molokai doom-peacock doom-vibrant
@@ -185,15 +183,6 @@
 
 ;; COMPLETION
 (savehist-mode)
-(recentf-mode 1)
-
-;; Default Completion
-(setq completion-auto-wrap t
-      completion-auto-help 'always
-      completion-show-help nil
-      completions-max-height 10)
-
-;; TODO 'orderless' style completion
 
 (use-package vertico
   :ensure t
@@ -261,16 +250,15 @@
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
+
 (use-package consult
-  :ensure t
-  :init
-  ;; (global-set-key (kbd "C-x b") #'consult-buffer)
-  )
+  :ensure t)
 
 (use-package which-key
   :ensure t
   :init
   (which-key-mode))
+
 
 (use-package helpful
   :ensure t
@@ -280,17 +268,17 @@
   (global-set-key (kbd "C-h k") #'helpful-key)
   (global-set-key (kbd "C-h x") #'helpful-command))
 
+;; TODO 'M-j' should split vertically if there is only one window
+;; TODO 'M-k' should split horizontaly if there is only one window
+
 ;; ESHELL
-;; TODO clear once and remove the message
+
 (use-package eshell
   :ensure t
   :defines eshell-prompt-function
   :bind (:map eshell-mode-map
          ([remap recenter-top-bottom] . eshell/clear))
   :config
-  (setq eshell-banner-message "")  ; Suppress the default welcome message
-  (add-hook 'eshell-mode-hook 'eshell/clear)  ; Clear eshell on startup
-  
   (with-no-warnings
     (defun eshell/clear ()
       "Clear the eshell buffer."
@@ -434,59 +422,29 @@
       (set-window-start prev current-pos)
       (select-window prev))))
 
-(defun smart-split-down ()
-  "Switch to the next window, or if only one window, split horizontally and focus below."
+
+(defun smart-enlarge-window-horizontally ()
+  "Enlarge the window horizontally in a direction dependent on its position."
   (interactive)
-  (if (= (length (window-list)) 1)
-      (progn
-        (split-window-below)
-        (windmove-down))
-    (other-window 1)))
+  (if (window-at-side-p (selected-window) 'right)
+      (shrink-window-horizontally 5)
+    (enlarge-window-horizontally 5)))
 
-(defun smart-split-up ()
-  "Switch to the previous window, or if only one window, split horizontally and focus above."
+;; TODO if there is only one window call mark-paragraph instead
+(defun smart-shrink-window-horizontally ()
+  "Shrink the window horizontally in a direction dependent on its position."
   (interactive)
-  (if (= (length (window-list)) 1)
-      (progn
-        (split-window-below))
-    (other-window -1)))
+  (if (window-at-side-p (selected-window) 'right)
+      (enlarge-window-horizontally 5)
+    (shrink-window-horizontally 5)))
 
-(defun smart-split-left ()
-  "If there is only one window, split vertically and focus left. Otherwise, shrink window horizontally."
-  (interactive)
-  (if (= (length (window-list)) 1)
-      (progn
-        (split-window-right))
-    (if (window-at-side-p (selected-window) 'right)
-        (enlarge-window-horizontally 5)
-      (shrink-window-horizontally 5))))
-
-(defun smart-split-right ()
-  "If there is only one window, split vertically and focus right. Otherwise, enlarge window horizontally."
-  (interactive)
-  (if (= (length (window-list)) 1)
-      (progn
-        (split-window-right)
-        (windmove-right))
-    (if (window-at-side-p (selected-window) 'right)
-        (shrink-window-horizontally 5)
-      (enlarge-window-horizontally 5))))
-
-(defun smart-delete-window ()
-  "Delete the current window, or kill the buffer if it's the only window."
-  (interactive)
-  (if (> (length (window-list)) 1)
-      (delete-window)
-    (kill-buffer (current-buffer))))
-
-(global-set-key (kbd "M-j") 'smart-split-down)
-(global-set-key (kbd "M-k") 'smart-split-up)
-(global-set-key (kbd "M-h") 'smart-split-left)
-(global-set-key (kbd "M-l") 'smart-split-right)
-(global-set-key (kbd "M-J") 'swap-with-next-window) ;; TODO if there is only one window open 'ESHELL'
-(global-set-key (kbd "M-K") 'swap-with-prev-window) ;; TODO if there is only one window do 'SOMETHING'
-(global-set-key (kbd "M-q") 'smart-delete-window)
-
+(global-set-key (kbd "M-j") 'other-window)
+(global-set-key (kbd "M-k") (lambda () (interactive) (other-window -1)))
+(global-set-key (kbd "M-J") 'swap-with-next-window)
+(global-set-key (kbd "M-K") 'swap-with-prev-window)
+(global-set-key (kbd "M-l") 'smart-enlarge-window-horizontally)
+(global-set-key (kbd "M-h") 'smart-shrink-window-horizontally)
+(global-set-key (kbd "M-q") 'delete-window) ;; TODO 'if' there is only one window kill the buffer instead
 
 (use-package eyebrowse
   :ensure t
@@ -494,8 +452,8 @@
   (eyebrowse-mode t))
 
 (global-set-key (kbd "M-1") (lambda () (interactive) (eyebrowse-switch-to-window-config 1)))
-(global-set-key (kbd "M-2") (lambda () (interactive) (eyebrowse-switch-to-window-config 2)))
 (global-set-key (kbd "M-3") (lambda () (interactive) (eyebrowse-switch-to-window-config 3)))
+(global-set-key (kbd "M-2") (lambda () (interactive) (eyebrowse-switch-to-window-config 2)))
 (global-set-key (kbd "M-4") (lambda () (interactive) (eyebrowse-switch-to-window-config 4)))
 (global-set-key (kbd "M-5") (lambda () (interactive) (eyebrowse-switch-to-window-config 5)))
 (global-set-key (kbd "M-6") (lambda () (interactive) (eyebrowse-switch-to-window-config 6)))
@@ -503,6 +461,8 @@
 (global-set-key (kbd "M-8") (lambda () (interactive) (eyebrowse-switch-to-window-config 8)))
 (global-set-key (kbd "M-9") (lambda () (interactive) (eyebrowse-switch-to-window-config 9)))
 (global-set-key (kbd "M-TAB") 'eyebrowse-last-window-config)
+
+
 
 
 ;; SCRATCH BUFFER
@@ -549,7 +509,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(eshell-z esh-help eshell-prompt-extras eyebrowse ef-themes which-key vertico smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes hl-todo helpful doom-themes corfu consult all-the-icons-completion))
+   '(esh-help eshell-prompt-extras eyebrowse ef-themes which-key vertico smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes hl-todo helpful doom-themes corfu consult all-the-icons-completion))
  '(safe-local-variable-values '((git-commit-major-mode . git-commit-elisp-text-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

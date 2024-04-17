@@ -10,7 +10,7 @@
 (setq initial-scratch-message nil)
 
 
-(add-to-list 'default-frame-alist '(background-color . "#282C34"))
+(add-to-list 'default-frame-alist '(background-color . "#212121"))
 
 (set-face-attribute 'default nil
                     :family "JetBrains Mono"
