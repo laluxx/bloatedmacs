@@ -10,7 +10,16 @@
 (setq initial-scratch-message nil)
 
 
+;; (setq inhibit-default-init t)
+
+;; Setting a default modeline styl
+
+
+
+
+
 (add-to-list 'default-frame-alist '(background-color . "#212121"))
+
 
 (set-face-attribute 'default nil
                     :family "JetBrains Mono"
