@@ -8,16 +8,19 @@
 
 ;; IMPORTANT Why some packages are not installing
 ;; TODO 'C-S-n' and 'C-S-p' should behave like visual-line mode in vim and always go to the beginning of the line
+;; TODO Remember the last mode the 'scratch-buffer' was is and load it at startup
+;; TODO Remember the last theme used, and load it at startup also extract the 'bg' color for the 'early-ini.el'
 
-;; KEYBINDS
+;;;; KEYBINDS
 (global-set-key (kbd "C-=") 'text-scale-increase)
 (global-set-key (kbd "C--") 'text-scale-decrease)
 
 (global-set-key (kbd "C-S-j") (lambda () (interactive) (join-line -1)))
 (global-set-key (kbd "C-S-d") 'kill-word)
 
-(global-set-key (kbd "C-c C-p") 'beginning-of-buffer)
-(global-set-key (kbd "C-c C-n") 'end-of-buffer)
+(global-set-key (kbd "C-c p") 'beginning-of-buffer)
+(global-set-key (kbd "C-c n") 'end-of-buffer)
+(global-set-key (kbd "C-c C-d") 'helpful-at-point)
 
 (global-set-key (kbd "C-x w c") 'delete-window)
 (global-set-key (kbd "C-x w w") 'other-window)
@@ -27,6 +30,9 @@
 (global-set-key (kbd "C-h t") 'laluxx/consult-dark-themes)
 (global-set-key (kbd "C-h F") 'describe-face)
 (global-set-key (kbd "C-h V") 'set-variable)
+
+(global-set-key (kbd "C-x C-S-j") 'dired-jump-other-window)
+(global-set-key (kbd "C-x c") 'compile)
 
 (use-package general
   :ensure t
@@ -42,6 +48,13 @@
 
   (define-prefix-command 'Theme nil)
   (define-key global-map (kbd "C-c t") 'Theme)
+
+  (define-prefix-command 'Search nil)
+  (define-key global-map (kbd "C-x s") 'Search)
+
+  (general-define-key
+   :keymaps 'Search
+   "i" 'consult-imenu)
 
   (general-define-key
    :keymaps 'Theme
@@ -60,15 +73,16 @@
    "w" 'other-window
    "e" 'laluxx/eshell)
 
-  ;; Now add specific commands under C-x f
   (general-define-key
    :keymaps 'Find
    "r" 'consult-recent-file
+   "e" 'consult-flymake
    "t" 'laluxx/find-todo
    "p" 'laluxx/find-package-source-code
    "m" 'consult-man
-   "i" 'consult-imenu
+   "i" 'consult-find
    "g" 'find-grep
+   "G" 'consult-ripgrep
    "f" 'find-file
    "j" 'laluxx/file-jump
    "l" 'consult-line
@@ -85,13 +99,19 @@
       (find-file file))))
 
 
-;; UI
-;; Disable confirmation for loading themes
+;;;; GIT
+
+;; (use-package magit
+;;   :ensure t)
+
+
+;;;; UI
 (setq custom-safe-themes t)
 (setq use-dialog-box nil)
-
+(setq confirm-nonexistent-file-or-buffer nil)
 (customize-set-variable 'cursor-in-non-selected-windows nil "Hide cursor in non-selected windows.")
 
+;; SCROLLING
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 5))) ;; one line at a time
 (setq mouse-wheel-progressive-speed nil) ;; don"t accelerate scrolling
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
@@ -99,60 +119,103 @@
 (use-package theme-magic
   :ensure t)
 
-
-(use-package ewal
+(use-package ligature
   :ensure t
-  :init
-  (setq ewal-use-built-in-always-p nil
-        ewal-use-built-in-on-failure-p t
-        ewal-built-in-palette "sexy-material"))
-
-;; ** Ewal-Doom-Theme Configuration
-(use-package ewal-doom-themes
-  :ensure t
-  :init
-  ;; If you've set ewal-use-built-in-always-p to nil in ewal configuration
-  ;; This might be unnecessary, but doesn't hurt to ensure.
-  (setq ewal-use-built-in-always-p nil
-        ewal-use-built-in-on-failure-p t
-        ewal-built-in-palette "sexy-material")
   :config
-  ;; (load-theme 'ewal-doom-one t)
-)
+  ;; Enable the "www" ligature in every possible major mode
+  (ligature-set-ligatures 't '("www"))
+  ;; Enable traditional ligature support in eww-mode, if the
+  ;; `variable-pitch' face supports it
+  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
+  ;; Enable all Cascadia Code ligatures in programming modes
+  (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+                                       ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+                                       "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+                                       "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+                                       "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+                                       "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+                                       "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+                                       "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+                                       ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+                                       "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+                                       "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+                                       "?=" "?." "??" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+                                       "\\\\" "://"))
+  (global-ligature-mode t))
 
 
+;; TODO lambda
+(global-prettify-symbols-mode 1)
+
+(add-hook 'emacs-lisp-mode-hook
+          (lambda ()
+            (push '("lambda" . ?λ) prettify-symbols-alist)))
 
 
-(use-package hide-mode-line
-  :ensure t)
+(use-package rainbow-mode
+  :ensure t
+  :diminish
+  :hook org-mode prog-mode)
+
 
 (use-package rainbow-delimiters
   :ensure t
   :hook (prog-mode . rainbow-delimiters-mode))
 
 
+(use-package ewal
+  :ensure t
+  :init
+  (setq ewal-use-built-in-always-p nil
+	ewal-use-built-in-on-failure-p t
+	ewal-built-in-palette "sexy-material"))
+
+
+(use-package ewal-doom-themes
+  :ensure t
+  :init
+  (setq ewal-use-built-in-always-p nil
+	ewal-use-built-in-on-failure-p t
+	ewal-built-in-palette "sexy-material"))
+
+;; WHITESPACES
+(setq whitespace-style '(face empty tabs trailing))
+(setq whitespace-line-column 80)  ; You can keep this if you might use it later
+(global-whitespace-mode 1)
+
+
 (use-package hl-todo
+  :ensure t
   :hook ((org-mode . hl-todo-mode)
-         (prog-mode . hl-todo-mode))
+	 (prog-mode . hl-todo-mode))
   :config
   (setq hl-todo-highlight-punctuation ":"
-        hl-todo-keyword-faces
-        `(("TODO"       warning bold)
-          ("FIXME"      error bold)
-          ("HACK"       font-lock-constant-face bold)
-          ("REVIEW"     font-lock-keyword-face bold)
-          ("NOTE"       success bold)
-          ("IMPORTANT"  success bold)
-          ("DEPRECATED" font-lock-doc-face bold))))
+	hl-todo-keyword-faces
+	`(("TODO"       warning bold)
+	  ("FIXME"      error bold)
+	  ("HACK"       font-lock-constant-face bold)
+	  ("REVIEW"     font-lock-keyword-face bold)
+	  ("NOTE"       success bold)
+	  ("IMPORTANT"  success bold)
+	  ("DEPRECATED" font-lock-doc-face bold))))
 
-(use-package moody
+;; (use-package moody
+;;   :ensure t
+;;   :config
+;;   (setq x-underline-at-descent-line t)
+;;   (moody-replace-mode-line-buffer-identification)
+;;   (moody-replace-vc-mode)
+;;   (moody-replace-eldoc-minibuffer-message-function))
+
+(use-package doom-modeline
   :ensure t
+  :init (doom-modeline-mode 1)
   :config
-  (setq x-underline-at-descent-line t)
-  (moody-replace-mode-line-buffer-identification)
-  (moody-replace-vc-mode)
-  (moody-replace-eldoc-minibuffer-message-function))
-    
+  (setq doom-modeline-height 35
+        doom-modeline-bar-width 5
+        doom-modeline-persp-name t
+        doom-modeline-persp-icon t))
+
 (use-package olivetti
   :ensure t)
 
@@ -161,7 +224,7 @@
   :ensure t
   :config
   (setq doom-themes-enable-bold t
-        doom-themes-enable-italic t)
+	doom-themes-enable-italic t)
   ;; (doom-themes-visual-bell-config)
   ;; Enable custom neotree theme (all-the-icons must be installed!)
   (doom-themes-neotree-config)
@@ -204,8 +267,8 @@
   "Select and load a theme from the list of dark themes with a preview, restoring the original theme if aborted."
   (interactive)
   (let* ((original-theme (car custom-enabled-themes))
-         (saved-theme original-theme)
-         (avail-themes dark-themes))
+	 (saved-theme original-theme)
+	 (avail-themes dark-themes))
     (consult--read
      (mapcar #'symbol-name avail-themes)
      :prompt "Select dark theme: "
@@ -213,31 +276,31 @@
      :category 'theme
      :history 'consult--theme-history
      :lookup (lambda (selected &rest _)
-               (setq selected (and selected (intern-soft selected)))
-               (or (and selected (car (memq selected avail-themes)))
-                   saved-theme))
+	       (setq selected (and selected (intern-soft selected)))
+	       (or (and selected (car (memq selected avail-themes)))
+		   saved-theme))
      :state (lambda (action theme)
-              (pcase action
-                ('return (unless (equal theme saved-theme)
-                           (consult-theme (or theme saved-theme))))
-                ((and 'preview (guard theme))
-                 (unless (equal theme (car custom-enabled-themes))
-                   (mapc #'disable-theme custom-enabled-themes)
-                   (load-theme theme t))))))
+	      (pcase action
+		('return (unless (equal theme saved-theme)
+			   (consult-theme (or theme saved-theme))))
+		((and 'preview (guard theme))
+		 (unless (equal theme (car custom-enabled-themes))
+		   (mapc #'disable-theme custom-enabled-themes)
+		   (load-theme theme t))))))
      :default (symbol-name (or saved-theme 'default)))
     ;; This check restores the original theme if no theme was selected
-    (unless (or (equal (car custom-enabled-themes) original-theme) 
-                (member (car custom-enabled-themes) avail-themes))
+    (unless (or (equal (car custom-enabled-themes) original-theme)
+		(member (car custom-enabled-themes) avail-themes))
       (mapc #'disable-theme custom-enabled-themes)
       (when original-theme
-        (load-theme original-theme t))))
+	(load-theme original-theme t))))
 
 (defun laluxx/consult-light-themes ()
   "Select and load a theme from the list of light themes with a preview, restoring the original theme if aborted."
   (interactive)
   (let* ((original-theme (car custom-enabled-themes))
-         (saved-theme original-theme)
-         (avail-themes light-themes))
+	 (saved-theme original-theme)
+	 (avail-themes light-themes))
     (consult--read
      (mapcar #'symbol-name avail-themes)
      :prompt "Select light theme: "
@@ -245,31 +308,31 @@
      :category 'theme
      :history 'consult--theme-history
      :lookup (lambda (selected &rest _)
-               (setq selected (and selected (intern-soft selected)))
-               (or (and selected (car (memq selected avail-themes)))
-                   saved-theme))
+	       (setq selected (and selected (intern-soft selected)))
+	       (or (and selected (car (memq selected avail-themes)))
+		   saved-theme))
      :state (lambda (action theme)
-              (pcase action
-                ('return (unless (equal theme saved-theme)
-                           (consult-theme (or theme saved-theme))))
-                ((and 'preview (guard theme))
-                 (unless (equal theme (car custom-enabled-themes))
-                   (mapc #'disable-theme custom-enabled-themes)
-                   (load-theme theme t))))))
+	      (pcase action
+		('return (unless (equal theme saved-theme)
+			   (consult-theme (or theme saved-theme))))
+		((and 'preview (guard theme))
+		 (unless (equal theme (car custom-enabled-themes))
+		   (mapc #'disable-theme custom-enabled-themes)
+		   (load-theme theme t))))))
      :default (symbol-name (or saved-theme 'default)))
     ;; This check restores the original theme if no theme was selected
-    (unless (or (equal (car custom-enabled-themes) original-theme) 
-                (member (car custom-enabled-themes) avail-themes))
+    (unless (or (equal (car custom-enabled-themes) original-theme)
+		(member (car custom-enabled-themes) avail-themes))
       (mapc #'disable-theme custom-enabled-themes)
       (when original-theme
-        (load-theme original-theme t))))
+	(load-theme original-theme t))))
 
 (defun laluxx/consult-ugly-themes ()
   "Select and load a theme from the list of ugly themes with a preview, restoring the original theme if aborted."
   (interactive)
   (let* ((original-theme (car custom-enabled-themes))
-         (saved-theme original-theme)
-         (avail-themes ugly-themes))
+	 (saved-theme original-theme)
+	 (avail-themes ugly-themes))
     (consult--read
      (mapcar #'symbol-name avail-themes)
      :prompt "Select ugly theme: "
@@ -277,26 +340,26 @@
      :category 'theme
      :history 'consult--theme-history
      :lookup (lambda (selected &rest _)
-               (setq selected (and selected (intern-soft selected)))
-               (or (and selected (car (memq selected avail-themes)))
-                   saved-theme))
+	       (setq selected (and selected (intern-soft selected)))
+	       (or (and selected (car (memq selected avail-themes)))
+		   saved-theme))
      :state (lambda (action theme)
-              (pcase action
-                ('return (unless (equal theme saved-theme)
-                           (consult-theme (or theme saved-theme))))
-                ((and 'preview (guard theme))
-                 (unless (equal theme (car custom-enabled-themes))
-                   (mapc #'disable-theme custom-enabled-themes)
-                   (load-theme theme t))))))
+	      (pcase action
+		('return (unless (equal theme saved-theme)
+			   (consult-theme (or theme saved-theme))))
+		((and 'preview (guard theme))
+		 (unless (equal theme (car custom-enabled-themes))
+		   (mapc #'disable-theme custom-enabled-themes)
+		   (load-theme theme t))))))
      :default (symbol-name (or saved-theme 'default)))
     ;; This check restores the original theme if no theme was selected
-    (unless (or (equal (car custom-enabled-themes) original-theme) 
-                (member (car custom-enabled-themes) avail-themes))
+    (unless (or (equal (car custom-enabled-themes) original-theme)
+		(member (car custom-enabled-themes) avail-themes))
       (mapc #'disable-theme custom-enabled-themes)
       (when original-theme
-        (load-theme original-theme t))))
+	(load-theme original-theme t))))
 
-;; COMPLETION
+;;;; COMPLETION
 ;;(setq history-length 25)
 (savehist-mode)
 
@@ -326,15 +389,15 @@
   (vertico-mode))
 
 ;; TODO is orderless 'slow' ?
-;; (use-package orderless
-;;   :ensure t
-;;   :init
-;;   ;; Configure a custom style dispatcher (see the Consult wiki)
-;;   ;; (setq orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch)
-;;   ;;       orderless-component-separator #'orderless-escapable-split-on-space)
-;;   (setq completion-styles '(orderless basic)
-;;         completion-category-defaults nil
-;;         completion-category-overrides '((file (styles partial-completion)))))
+(use-package orderless
+  :ensure t
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
 
 
 (use-package marginalia
@@ -343,13 +406,13 @@
   (marginalia-mode))
 
 (use-package all-the-icons
+  :ensure t
   :if (display-graphic-p))
 
 (use-package all-the-icons-completion
   :ensure t
   :init
   (all-the-icons-completion-mode))
-
 
 (use-package corfu
   ;; Optional customizations
@@ -363,7 +426,7 @@
   ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
   ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
   (corfu-scroll-margin 5)        ;; Use scroll margin
-  
+
   ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
   ;; be used globally (M-/).  See also the customization variable
   ;; `global-corfu-modes' to exclude certain modes.
@@ -376,7 +439,7 @@
   (when (local-variable-p 'completion-at-point-functions)
     ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
     (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
-                corfu-popupinfo-delay nil)
+		corfu-popupinfo-delay nil)
     (corfu-mode 1)))
 (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
 
@@ -401,8 +464,13 @@
 (use-package consult
   :ensure t
   :init
-  ;; (global-set-key (kbd "C-x b") #'consult-buffer)
-  )
+  (global-set-key (kbd "C-x b") #'consult-buffer))
+
+(defun laluxx/find-todo ()
+  "Search for the term 'TODO' in the current buffer."
+  (interactive)
+  (consult-line "TODO"))
+
 
 (use-package which-key
   :ensure t
@@ -417,12 +485,12 @@
   (global-set-key (kbd "C-h k") #'helpful-key)
   (global-set-key (kbd "C-h x") #'helpful-command))
 
-;; ESHELL
+;;;; ESHELL
 (use-package eshell
   :ensure t
   :defines eshell-prompt-function
   :bind (:map eshell-mode-map
-         ([remap recenter-top-bottom] . eshell/clear))
+	 ([remap recenter-top-bottom] . eshell/clear))
   :config
   (setq eshell-banner-message "")  ; Suppress the default welcome message
   (add-hook 'eshell-mode-hook 'eshell/clear)  ; Clear eshell on startup
@@ -430,41 +498,42 @@
   ;; Override eshell-cmpl-mode-map for M-TAB
   (with-eval-after-load 'em-cmpl
     (define-key eshell-cmpl-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config))
-  
+
   (with-no-warnings
     (defun eshell/clear ()
       "Clear the eshell buffer."
       (interactive)
       (let ((inhibit-read-only t))
-        (erase-buffer)
-        (eshell-send-input)))
+    (erase-buffer)
+    (eshell-send-input)))
+
 
     (defun eshell/emacs (&rest args)
       "Open a file (ARGS) in Emacs.  Some habits die hard."
       (if (null args)
-          ;; If I just ran "emacs", I probably expect to be launching
-          ;; Emacs, which is rather silly since I'm already in Emacs.
-          ;; So just pretend to do what I ask.
-          (bury-buffer)
-        ;; We have to expand the file names or else naming a directory in an
-        ;; argument causes later arguments to be looked for in that directory,
-        ;; not the starting directory
-        (mapc #'find-file (mapcar #'expand-file-name (flatten-tree (reverse args))))))
+	  ;; If I just ran "emacs", I probably expect to be launching
+	  ;; Emacs, which is rather silly since I'm already in Emacs.
+	  ;; So just pretend to do what I ask.
+	  (bury-buffer)
+	;; We have to expand the file names or else naming a directory in an
+	;; argument causes later arguments to be looked for in that directory,
+	;; not the starting directory
+	(mapc #'find-file (mapcar #'expand-file-name (flatten-tree (reverse args))))))
     (defalias 'eshell/e #'eshell/emacs)
     (defalias 'eshell/ec #'eshell/emacs)
 
     (defun eshell/ebc (&rest args)
       "Compile a file (ARGS) in Emacs. Use `compile' to do background make."
       (if (eshell-interactive-output-p)
-          (let ((compilation-process-setup-function
-                 (list 'lambda nil
-                       (list 'setq 'process-environment
-                             (list 'quote (eshell-copy-environment))))))
-            (compile (eshell-flatten-and-stringify args))
-            (pop-to-buffer compilation-last-buffer))
-        (throw 'eshell-replace-command
-               (let ((l (eshell-stringify-list (flatten-tree args))))
-                 (eshell-parse-command (car l) (cdr l))))))
+	  (let ((compilation-process-setup-function
+		 (list 'lambda nil
+		       (list 'setq 'process-environment
+			     (list 'quote (eshell-copy-environment))))))
+	    (compile (eshell-flatten-and-stringify args))
+	    (pop-to-buffer compilation-last-buffer))
+	(throw 'eshell-replace-command
+	       (let ((l (eshell-stringify-list (flatten-tree args))))
+		 (eshell-parse-command (car l) (cdr l))))))
     (put 'eshell/ebc 'eshell-no-numeric-conversions t)
 
     (defun eshell-view-file (file)
@@ -472,29 +541,29 @@
       (interactive "fView file: ")
       (unless (file-exists-p file) (error "%s does not exist" file))
       (let ((buffer (find-file-noselect file)))
-        (if (eq (get (buffer-local-value 'major-mode buffer) 'mode-class)
-                'special)
-            (progn
-              (switch-to-buffer buffer)
-              (message "Not using View mode because the major mode is special"))
-          (let ((undo-window (list (window-buffer) (window-start)
-                                   (+ (window-point)
-                                      (length (funcall eshell-prompt-function))))))
-            (switch-to-buffer buffer)
-            (view-mode-enter (cons (selected-window) (cons nil undo-window))
-                             'kill-buffer)))))
+	(if (eq (get (buffer-local-value 'major-mode buffer) 'mode-class)
+		'special)
+	    (progn
+	      (switch-to-buffer buffer)
+	      (message "Not using View mode because the major mode is special"))
+	  (let ((undo-window (list (window-buffer) (window-start)
+				   (+ (window-point)
+				      (length (funcall eshell-prompt-function))))))
+	    (switch-to-buffer buffer)
+	    (view-mode-enter (cons (selected-window) (cons nil undo-window))
+			     'kill-buffer)))))
 
     (defun eshell/less (&rest args)
       "Invoke `view-file' on a file (ARGS).
 
 \"less +42 foo\" will go to line 42 in the buffer for foo."
       (while args
-        (if (string-match "\\`\\+\\([0-9]+\\)\\'" (car args))
-            (let* ((line (string-to-number (match-string 1 (pop args))))
-                   (file (pop args)))
-              (eshell-view-file file)
-              (forward-line line))
-          (eshell-view-file (pop args)))))
+	(if (string-match "\\`\\+\\([0-9]+\\)\\'" (car args))
+	    (let* ((line (string-to-number (match-string 1 (pop args))))
+		   (file (pop args)))
+	      (eshell-view-file file)
+	      (forward-line line))
+	  (eshell-view-file (pop args)))))
     (defalias 'eshell/more #'eshell/less))
 
   ;;  Display extra information for prompt
@@ -504,11 +573,11 @@
     :defines eshell-highlight-prompt
     :autoload (epe-theme-lambda epe-theme-dakrone epe-theme-pipeline)
     :init (setq eshell-highlight-prompt nil
-                eshell-prompt-function #'epe-theme-lambda))
+		eshell-prompt-function #'epe-theme-lambda))
 
   ;; `eldoc' support
   (use-package esh-help
-    :ensure
+    :ensure t
     :init (setup-esh-help-eldoc))
 
   ;; `cd' to frequent directory in `eshell'
@@ -523,9 +592,38 @@
   (execute-kbd-macro (kbd "M-3")))
 
 
+(defun eshell-color-word (word face)
+  "Color a WORD in eshell with the specified FACE."
+  (save-excursion
+    (goto-char eshell-last-output-start)
+    (while (re-search-forward (concat "\\b" word "\\b") eshell-last-output-end t)
+      (put-text-property (match-beginning 0) (match-end 0)
+                         'face face))))
 
-;; LANGUAGES
-;;;; ELISP
+
+(defvar eshell-word-faces '()
+  "List of (word . face) pairs to color in eshell.")
+
+(defun eshell-apply-coloring ()
+  "Apply coloring to words in eshell based on `eshell-word-faces`."
+  (mapc (lambda (pair)
+          (eshell-color-word (car pair) (cdr pair)))
+        eshell-word-faces))
+
+(defun eshell-add-color-word (word face)
+  "Add a word and face pair to `eshell-word-faces` and update eshell hook."
+  (add-to-list 'eshell-word-faces (cons word face))
+  (add-hook 'eshell-output-filter-functions 'eshell-apply-coloring))
+
+
+;; TODO why does this fuck up the prompt ?
+;; (eshell-add-color-word "INFO" 'success)
+;; (eshell-add-color-word "ERROR" 'error)
+;; (eshell-add-color-word "DEBUG" 'font-lock-comment-face)
+
+
+;;;; LANGUAGES
+;; ELISP
 (defun laluxx/setup-emacs-lisp-keys ()
   "Setup keybindings for `emacs-lisp-mode' and related modes."
   (define-key emacs-lisp-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config)
@@ -534,8 +632,60 @@
 (add-hook 'emacs-lisp-mode-hook 'laluxx/setup-emacs-lisp-keys)
 (add-hook 'lisp-interaction-mode-hook 'laluxx/setup-emacs-lisp-keys)
 
+;; C
+(setq-default c-basic-offset 4
+              tab-width 4
+              indent-tabs-mode nil)
 
-;; DIRED
+
+;; TODO make modules
+
+;; (use-package lsp-mode
+;;   :ensure t
+;;   :hook ((c-mode . lsp)
+;;          (c++-mode . lsp))
+;;   :config
+;;   (setq lsp-idle-delay 0.1) ; clangd is fast
+;;   (setq lsp-headerline-breadcrumb-enable nil))
+
+;; (use-package lsp-ui
+;;   :ensure t)
+
+;; RUST
+;; (use-package rustic
+;;   :ensure t )
+
+
+
+
+
+;;;; DIRED
+
+(defvar auto-create-directory-enabled t
+  "When non-nil, Emacs will automatically create non-existing directories when opening files.")
+
+(defun create-dir-if-not-exists ()
+  "Create the parent directory of the file to be opened if it does not already exist and if `auto-create-directory-enabled' is true."
+  (when auto-create-directory-enabled
+    (let ((dir (file-name-directory buffer-file-name)))
+      (unless (file-exists-p dir)
+        (make-directory dir t)))))
+
+(add-hook 'find-file-hook 'create-dir-if-not-exists)
+
+(defun toggle-auto-create-directory ()
+  "Toggle the automatic creation of non-existing directories when opening files."
+  (interactive)
+  (setq auto-create-directory-enabled (not auto-create-directory-enabled))
+  (message "Auto-create directory is now %s"
+           (if auto-create-directory-enabled "enabled" "disabled")))
+
+;; TODO
+(use-package diredfl
+  :ensure t
+  :config
+  (diredfl-global-mode))
+
 (defun my-dired-mode-setup ()
   "Custom keybindings and settings for `dired-mode`."
   (define-key dired-mode-map (kbd "b") 'dired-up-directory)
@@ -543,8 +693,7 @@
 
 (add-hook 'dired-mode-hook 'my-dired-mode-setup)
 
-
-;; ISEARCH
+;;;; ISEARCH
 ;; TODO while typing wrapping
 (defun isearch-repeat-forward+ ()
   (interactive)
@@ -566,10 +715,13 @@
 (define-key isearch-mode-map (kbd "C-r") 'isearch-repeat-backward+)
 
 
-;; EDITING
+;;;; EDITING
 (setq-default truncate-lines t)
 (electric-pair-mode)
 (global-auto-revert-mode 1)
+
+(use-package drag-stuff
+  :ensure t)
 
 (defun laluxx/move-to-beginning-if-shorter-than-column (original-func &rest args)
   "Move cursor to the beginning of the line if the new line after executing ORIGINAL-FUNC is shorter than the current column position."
@@ -579,19 +731,19 @@
     ;; After moving, check the length of the new line.
     (when (derived-mode-p 'text-mode 'prog-mode)
       (let ((new-length (- (line-end-position) (line-beginning-position))))
-        ;; If the new line is shorter than the current column position, move the cursor to the beginning of that line.
-        (when (< new-length current-column)
-          (beginning-of-line)
-          (setq this-command 'beginning-of-line))))))  ; Force Emacs to reset the desired column
+	;; If the new line is shorter than the current column position, move the cursor to the beginning of that line.
+	(when (< new-length current-column)
+	  (beginning-of-line)
+	  (setq this-command 'beginning-of-line))))))  ; Force Emacs to reset the desired column
 
 (advice-add 'next-line :around #'laluxx/move-to-beginning-if-shorter-than-column)
 (advice-add 'previous-line :around #'laluxx/move-to-beginning-if-shorter-than-column)
 
 
 (global-set-key (kbd "C-S-o") (lambda ()
-                              (interactive)
-                              (duplicate-line)
-                              (next-line)))
+			      (interactive)
+			      (duplicate-line)
+			      (next-line)))
 
 
 (defvar copied-line nil "Flag to indicate if a line has been copied.")
@@ -611,13 +763,13 @@
   (interactive)
   (if copied-line
       (if (save-excursion
-            (beginning-of-line)
-            (/= (point) (line-end-position)))
-          (progn
-            (end-of-line)
-            (newline)
-            (yank))
-        (yank))
+	    (beginning-of-line)
+	    (/= (point) (line-end-position)))
+	  (progn
+	    (end-of-line)
+	    (newline)
+	    (yank))
+	(yank))
     (yank)))
 
 (global-set-key (kbd "C-S-y") 'laluxx/copy-line)
@@ -637,8 +789,8 @@
   (interactive)
   (if (use-region-p)
       (progn
-        (call-interactively 'eval-region)
-        (keyboard-quit))  ; Deselect the region
+	(call-interactively 'eval-region)
+	(keyboard-quit))  ; Deselect the region
     (insert "e")))
 
 (global-set-key (kbd "e") 'laluxx/insert-or-evaluate-region)
@@ -657,8 +809,8 @@
   (interactive)
   (if (use-region-p)
       (progn
-        (call-interactively 'kill-ring-save)
-        (setq copied-line nil))
+	(call-interactively 'kill-ring-save)
+	(setq copied-line nil))
     (insert "y")))
 
 
@@ -672,9 +824,46 @@
     (delete-char 1)))
 
 (global-set-key (kbd "C-d") 'laluxx/delete-char-or-kill-region)
-(global-set-key (kbd "M-n") 'forward-paragraph)
-(global-set-key (kbd "M-p") 'backward-paragraph)
 
+
+
+(defun laluxx/drag-down-or-forward-paragraph ()
+  "If a region is active 'drag-stuff-down' else 'forward-paragraph'."
+  (interactive)
+  (if (use-region-p)
+      (call-interactively 'drag-stuff-down)
+    (forward-paragraph)))
+
+(defun laluxx/drag-up-or-backward-paragraph ()
+  "If a region is active 'drag-stuff-up' else 'backward-paragraph'."
+  (interactive)
+  (if (use-region-p)
+      (call-interactively 'drag-stuff-up)
+    (backward-paragraph)))
+
+(global-set-key (kbd "M-n") 'laluxx/drag-down-or-forward-paragraph)
+(global-set-key (kbd "M-p") 'laluxx/drag-up-or-backward-paragraph)
+
+
+(defun laluxx/forward-paragraph-select ()
+  "Move forward a paragraph and extend the selection."
+  (interactive)
+  (unless (use-region-p)
+    (push-mark))
+  (forward-paragraph)
+  (activate-mark))
+
+(defun laluxx/backward-paragraph-select ()
+  "Move backward a paragraph and extend the selection."
+  (interactive)
+  (unless (use-region-p)
+    (push-mark))
+  (backward-paragraph)
+  (activate-mark))
+
+(global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
+(global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
+(global-set-key (kbd "M-H") 'mark-paragraph)
 
 (use-package iedit
   :ensure t)
@@ -694,56 +883,91 @@
 (global-set-key (kbd "M-I") 'laluxx/iedit-backward-word)
 (global-set-key (kbd "M-i") 'laluxx/iedit-forward-word)
 
-
-(defun laluxx/find-todo ()
-  "Search for the term 'TODO' in the current buffer."
+(defun laluxx/open-above ()
+  "Open a new line above the current line and position the cursor at its beginning."
   (interactive)
-  (consult-line "TODO"))
+  (beginning-of-line)
+  (open-line 1)
+  (indent-for-tab-command))
+
+(defun laluxx/open-below ()
+  "Open a new line below the current line and position the cursor at its beginning."
+  (interactive)
+  (end-of-line)
+  (newline-and-indent))
+
+(global-set-key (kbd "M-O") 'laluxx/open-above)
+(global-set-key (kbd "M-o") 'laluxx/open-below)
 
 
 
-
-;; FUNCTIONS
-
+;;;; FUNCTIONS
 (defun laluxx/find-package-source-code ()
   "NOTE Work only with 'elpa' opens a .el file corresponding to the extended 'word' under the cursor in the ~/.config/emacs/elpa/ directory in a new window."
   (interactive)
   (save-excursion
     (let* ((start (progn (skip-chars-backward "^ \t\n") (point)))
-           (end (progn (skip-chars-forward "^ \t\n") (point)))
-           (package-name (buffer-substring-no-properties start end))
-           (elpa-dir "~/.config/emacs/elpa/")
-           (directories (directory-files elpa-dir t "\\`[^.].*")) ; ignore hidden dirs
-           matching-dir file-path found)
+	   (end (progn (skip-chars-forward "^ \t\n") (point)))
+	   (package-name (buffer-substring-no-properties start end))
+	   (elpa-dir "~/.config/emacs/elpa/")
+	   (directories (directory-files elpa-dir t "\\`[^.].*")) ; ignore hidden dirs
+	   matching-dir file-path found)
 
       ;; Find the first directory that starts with the package name and has a version
       (dolist (dir directories found)
-        (when (string-match-p (format "\\`%s-.*" (regexp-quote package-name)) (file-name-nondirectory dir))
-          (setq matching-dir dir)
-          (setq found t)))
+	(when (string-match-p (format "\\`%s-.*" (regexp-quote package-name)) (file-name-nondirectory dir))
+	  (setq matching-dir dir)
+	  (setq found t)))
 
       (when matching-dir
-        ;; Assuming the main .el file has the same name as the package
-        (setq file-path (concat matching-dir "/" package-name ".el"))
-        
-        ;; Check if the .el file exists or fallback to any .el file
-        (unless (file-exists-p file-path)
-          (let ((el-files (directory-files matching-dir t "\\.el\\'")))
-            (when el-files
-              (setq file-path (car el-files)))))
+	;; Assuming the main .el file has the same name as the package
+	(setq file-path (concat matching-dir "/" package-name ".el"))
 
-        (if (file-exists-p file-path)
-            (find-file-other-window file-path)  ; Open the file in a new window if it exists
-          (message "Elisp file does not exist: %s" file-path)))
+	;; Check if the .el file exists or fallback to any .el file
+	(unless (file-exists-p file-path)
+	  (let ((el-files (directory-files matching-dir t "\\.el\\'")))
+	    (when el-files
+	      (setq file-path (car el-files)))))
+
+	(if (file-exists-p file-path)
+	    (find-file-other-window file-path)  ; Open the file in a new window if it exists
+	  (message "Elisp file does not exist: %s" file-path)))
       (unless found
-        (message "No directory starts with: %s" package-name)))))
+	(message "No directory starts with: %s" package-name)))))
+
+
+;; EMACS DIR MANAGEMENT
+(defun laluxx/clean-emacs-config ()
+  "Delete all directories inside ~/.config/emacs/ not named 'scripts'
+   and all files not named 'init.el' or 'early-init.el'."
+  (interactive)
+  (let ((root-dir "~/.config/emacs/"))
+    ;; Ensure the directory exists
+    (when (file-directory-p root-dir)
+      ;; Loop over the directory contents
+      (dolist (entry (directory-files root-dir t "\\`[^.]"))
+        (cond
+         ;; Check if entry is a directory
+         ((file-directory-p entry)
+          (unless (string= (file-name-nondirectory entry) "scripts")
+            (delete-directory entry t)))
+         ;; Check for file conditions
+         ((file-regular-p entry)
+          (unless (member (file-name-nondirectory entry) '("init.el" "early-init.el"))
+            (delete-file entry))))))))
+
+
+(defun laluxx/recompile-emacs ()
+  "Restart and recompile emacs"
+  (interactive)
+  (laluxx/clean-emacs-config)
+  (restart-emacs))
 
 
 
 
+;;;; WINDOW MANAGMENT
 
-
-;; WINDOW MANAGMENT
 (defun swap-with-prev-window ()
   "Swap the current window with the previous one,
    open 'scratch-buffer' if only one window."
@@ -754,11 +978,11 @@
 	(other-window 1)
 	(scratch-buffer))
   (let* ((current (selected-window))
-         (prev (previous-window))
-         (current-buf (window-buffer current))
-         (prev-buf (window-buffer prev))
-         (current-pos (window-start current))
-         (prev-pos (window-start prev)))
+	 (prev (previous-window))
+	 (current-buf (window-buffer current))
+	 (prev-buf (window-buffer prev))
+	 (current-pos (window-start current))
+	 (prev-pos (window-start prev)))
     (unless (eq current prev)
       (set-window-buffer current prev-buf)
       (set-window-buffer prev current-buf)
@@ -776,11 +1000,11 @@
 	(other-window 1)
 	(eshell))
   (let* ((current (selected-window))
-         (next (next-window))
-         (current-buf (window-buffer current))
-         (next-buf (window-buffer next))
-         (current-pos (window-start current))
-         (next-pos (window-start next)))
+	 (next (next-window))
+	 (current-buf (window-buffer current))
+	 (next-buf (window-buffer next))
+	 (current-pos (window-start current))
+	 (next-pos (window-start next)))
     (unless (eq current next)
       (set-window-buffer current next-buf)
       (set-window-buffer next current-buf)
@@ -795,8 +1019,8 @@
   (interactive)
   (if (= (length (window-list)) 1)
       (progn
-        (split-window-below)
-        (windmove-down))
+	(split-window-below)
+	(windmove-down))
     (other-window 1)))
 
 (defun smart-split-up ()
@@ -804,7 +1028,7 @@
   (interactive)
   (if (= (length (window-list)) 1)
       (progn
-        (split-window-below))
+	(split-window-below))
     (other-window -1)))
 
 (defun smart-split-left ()
@@ -812,9 +1036,9 @@
   (interactive)
   (if (= (length (window-list)) 1)
       (progn
-        (split-window-right))
+	(split-window-right))
     (if (window-at-side-p (selected-window) 'right)
-        (enlarge-window-horizontally 5)
+	(enlarge-window-horizontally 5)
       (shrink-window-horizontally 5))))
 
 (defun smart-split-right ()
@@ -822,10 +1046,10 @@
   (interactive)
   (if (= (length (window-list)) 1)
       (progn
-        (split-window-right)
-        (windmove-right))
+	(split-window-right)
+	(windmove-right))
     (if (window-at-side-p (selected-window) 'right)
-        (shrink-window-horizontally 5)
+	(shrink-window-horizontally 5)
       (enlarge-window-horizontally 5))))
 
 (defun smart-delete-window ()
@@ -851,7 +1075,7 @@
   (eyebrowse-mode t)
   (defvar workspace-3-eshell-initialized nil
     "Flag to check if eshell has been initialized in workspace 3.")
-  
+
   (defun switch-to-workspace-3-and-maybe-start-eshell ()
     "Close any open eshell in the current workspace, then switch to workspace 3,
    and start eshell if it hasn't been started yet, closing other windows."
@@ -872,14 +1096,14 @@
     ;; Ensure only eshell windows are open in this workspace
     (let ((only-eshell t))
       (walk-windows (lambda (w)
-                      (unless (eq 'eshell-mode (buffer-local-value 'major-mode (window-buffer w)))
+		      (unless (eq 'eshell-mode (buffer-local-value 'major-mode (window-buffer w)))
 			(setq only-eshell nil)))
-                    nil t)  ; t indicates to walk windows in the current frame only
+		    nil t)  ; t indicates to walk windows in the current frame only
       (unless only-eshell
 	(mapc (lambda (w)
 		(unless (eq 'eshell-mode (buffer-local-value 'major-mode (window-buffer w)))
-                  (delete-window w)))
-              (window-list nil 'no-minibuf)))))  ; Avoid minibuffer windows
+		  (delete-window w)))
+	      (window-list nil 'no-minibuf)))))  ; Avoid minibuffer windows
 
   (global-set-key (kbd "M-1") (lambda () (interactive) (eyebrowse-switch-to-window-config 1)))
   (global-set-key (kbd "M-2") (lambda () (interactive) (eyebrowse-switch-to-window-config 2)))
@@ -893,8 +1117,79 @@
   (global-set-key (kbd "M-TAB") 'eyebrowse-last-window-config))
 
 
-;; SCRATCH BUFFER
-;;;; making the scratch buffer persist
+;; EXWM TODO
+
+;; (defun efs/exwm-update-class ()
+;;   (exwm-workspace-rename-buffer exwm-class-name))
+
+;; (use-package exwm
+;;   :config
+;;   ;; Set the default number of workspaces
+;;   (setq exwm-workspace-number 5)
+
+;;   ;; When window "class" updates, use it to set the buffer name
+;;   (add-hook 'exwm-update-class-hook #'efs/exwm-update-class)
+
+;;   ;; Rebind CapsLock to Ctrl
+;;   (start-process-shell-command "xmodmap" nil "xmodmap ~/.emacs.d/exwm/Xmodmap")
+
+;;   ;; Set the screen resolution (update this to be the correct resolution for your screen!)
+;;   (require 'exwm-randr)
+;;   (exwm-randr-enable)
+;;   ;; (start-process-shell-command "xrandr" nil "xrandr --output Virtual-1 --primary --mode 2048x1152 --pos 0x0 --rotate normal")
+
+;;   ;; Load the system tray before exwm-init
+;;   (require 'exwm-systemtray)
+;;   (exwm-systemtray-enable)
+
+;;   ;; These keys should always pass through to Emacs
+;;   (setq exwm-input-prefix-keys
+;;     '(?\C-x
+;;       ?\C-u
+;;       ?\C-h
+;;       ?\M-x
+;;       ?\M-`
+;;       ?\M-&
+;;       ?\M-:
+;;       ?\C-\M-j  ;; Buffer list
+;;       ?\C-\ ))  ;; Ctrl+Space
+
+;;   ;; Ctrl+Q will enable the next key to be sent directly
+;;   (define-key exwm-mode-map [?\C-q] 'exwm-input-send-next-key)
+
+;;   ;; Set up global key bindings.  These always work, no matter the input state!
+;;   ;; Keep in mind that changing this list after EXWM initializes has no effect.
+;;   (setq exwm-input-global-keys
+;;         `(
+;;           ;; Reset to line-mode (C-c C-k switches to char-mode via exwm-input-release-keyboard)
+;;           ([?\s-r] . exwm-reset)
+
+;;           ;; Move between windows
+;;           ([s-left] . windmove-left)
+;;           ([s-right] . windmove-right)
+;;           ([s-up] . windmove-up)
+;;           ([s-down] . windmove-down)
+
+;;           ;; Launch applications via shell command
+;;           ([?\s-&] . (lambda (command)
+;;                        (interactive (list (read-shell-command "$ ")))
+;;                        (start-process-shell-command command nil command)))
+
+;;           ;; Switch workspace
+;;           ([?\s-w] . exwm-workspace-switch)
+;;           ([?\s-`] . (lambda () (interactive) (exwm-workspace-switch-create 0)))
+
+;;           ;; 's-N': Switch to certain workspace with Super (Win) plus a number key (0 - 9)
+;;           ,@(mapcar (lambda (i)
+;;                       `(,(kbd (format "s-%d" i)) .
+;;                         (lambda ()
+;;                           (interactive)
+;;                           (exwm-workspace-switch-create ,i))))
+;;                     (number-sequence 0 9))))
+
+;;   (exwm-enable))
+
+;;;; SCRATCH BUFFER
 (defun save-scratch-buffer-to-file ()
   "Save the contents of *scratch* buffer to a specific file, ensuring directory exists."
   (let ((scratch-file "~/.config/emacs/scratch"))
@@ -909,13 +1204,73 @@
   (let ((scratch-file "~/.config/emacs/scratch"))
     (when (file-exists-p scratch-file)
       (with-current-buffer "*scratch*"
-        (erase-buffer)
-        (insert-file-contents scratch-file)
+	(erase-buffer)
+	(insert-file-contents scratch-file)
 	(text-scale-set 3)))))
 
 (add-hook 'kill-emacs-hook 'save-scratch-buffer-to-file)
 (add-hook 'emacs-startup-hook 'load-scratch-buffer-from-file)
 
+
+;;;; PERSONAL PACKAGES
+(define-derived-mode elisp-outline-mode emacs-lisp-mode "Elisp Outline"
+  "Major mode for Elisp files with enhanced outline capabilities based on comment headers.")
+
+(defun elisp-outline-setup ()
+  (setq-local outline-regexp "^;;;+\\s-")  ;; Recognize 3 or more semicolons followed by a space
+  (setq-local outline-level
+              (lambda ()
+                (- (string-width (match-string 0)) 2)))  ;; The outline level is the number of semicolons minus two
+  (outline-minor-mode 1))  ;; Enable outline-minor-mode within elisp-outline-mode
+
+(add-hook 'elisp-outline-mode-hook 'elisp-outline-setup)  ;; Add the setup function to the mode's hook
+
+(defun outline-next-heading-same-level ()
+  (interactive)
+  (outline-next-heading)
+  (while (and (not (bobp)) (> (funcall outline-level) 2))
+    (outline-next-heading)))
+
+(defun outline-previous-heading-same-level ()
+  (interactive)
+  (outline-previous-heading)
+  (while (and (not (eobp)) (> (funcall outline-level) 2))
+    (outline-previous-heading)))
+
+(defun outline-toggle-children-improved ()
+  (interactive)
+  (outline-toggle-children)
+  (save-excursion
+    (let ((level (funcall outline-level)))
+      (outline-next-heading)
+      (while (and (not (eobp)) (> (funcall outline-level) level))
+        (outline-toggle-children)
+        (outline-next-heading)))))
+
+
+(defvar elisp-outline-all-collapsed t
+  "State tracking whether all top-level headings are currently collapsed.")
+
+(defun elisp-outline-toggle-all-top-level ()
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (if elisp-outline-all-collapsed
+        (while (re-search-forward "^;;;;\\s-" nil t)
+          (outline-show-subtree))
+      (goto-char (point-min))
+      (while (re-search-forward "^;;;;\\s-" nil t)
+        (outline-hide-subtree)))
+    (setq elisp-outline-all-collapsed (not elisp-outline-all-collapsed))))
+
+(define-key elisp-outline-mode-map (kbd "TAB") 'outline-toggle-children-improved)
+(define-key elisp-outline-mode-map (kbd "<backtab>") 'elisp-outline-toggle-all-top-level)
+(define-key elisp-outline-mode-map (kbd "C-c C-n") 'outline-next-heading-same-level)
+(define-key elisp-outline-mode-map (kbd "C-c C-p") 'outline-previous-heading-same-level)
+(define-key elisp-outline-mode-map (kbd "C-c C-u") 'outline-up-heading)
+
+
+;;;; PROFILER
 
 (run-with-idle-timer
  1 nil
@@ -930,7 +1285,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
+   '(doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

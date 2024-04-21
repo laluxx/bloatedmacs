@@ -12,12 +12,6 @@
 
 ;; (setq inhibit-default-init t)
 
-;; Setting a default modeline styl
-
-
-
-
-
 (add-to-list 'default-frame-alist '(background-color . "#212121"))
 
 
