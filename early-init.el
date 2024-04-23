@@ -9,9 +9,6 @@
 (setq inhibit-startup-message t)
 (setq initial-scratch-message nil)
 
-
-;; (setq inhibit-default-init t)
-
 (add-to-list 'default-frame-alist '(background-color . "#212121"))
 
 

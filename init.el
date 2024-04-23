@@ -10,13 +10,11 @@
 ;; TODO 'C-S-n' and 'C-S-p' should behave like visual-line mode in vim and always go to the beginning of the line
 ;; TODO Remember the last mode the 'scratch-buffer' was is and load it at startup
 ;; TODO Remember the last theme used, and load it at startup also extract the 'bg' color for the 'early-ini.el'
+;; TODO 'elisp-outline-mode' make it automatically collapse heading when entering, make ;;; heading work and make heading look good
 
 ;;;; KEYBINDS
 (global-set-key (kbd "C-=") 'text-scale-increase)
 (global-set-key (kbd "C--") 'text-scale-decrease)
-
-(global-set-key (kbd "C-S-j") (lambda () (interactive) (join-line -1)))
-(global-set-key (kbd "C-S-d") 'kill-word)
 
 (global-set-key (kbd "C-c p") 'beginning-of-buffer)
 (global-set-key (kbd "C-c n") 'end-of-buffer)
@@ -34,14 +32,31 @@
 (global-set-key (kbd "C-x C-S-j") 'dired-jump-other-window)
 (global-set-key (kbd "C-x c") 'compile)
 
+(global-set-key (kbd "C-S-j") (lambda () (interactive) (join-line -1)))
+(global-set-key (kbd "C-S-d") 'kill-word)
+(global-set-key (kbd "C-e") 'laluxx/mwim-end)
+(global-set-key (kbd "C-a") 'laluxx/mwim-beginning)
+(global-set-key (kbd "C-S-y") 'laluxx/copy-line)
+(global-set-key (kbd "C-y") 'laluxx/yank-line)
+(global-set-key (kbd "C-k") 'laluxx/kill-line-or-kill-region)
+(global-set-key (kbd "e") 'laluxx/insert-or-evaluate-region)
+(global-set-key (kbd "y") 'laluxx/insert-or-copy-region)
+(global-set-key (kbd "C-d") 'laluxx/delete-char-or-kill-region)
+(global-set-key (kbd "M-n") 'laluxx/drag-down-or-forward-paragraph)
+(global-set-key (kbd "M-p") 'laluxx/drag-up-or-backward-paragraph)
+(global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
+(global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
+(global-set-key (kbd "M-H") 'mark-paragraph)
+(global-set-key (kbd "M-I") 'laluxx/iedit-backward-word)
+(global-set-key (kbd "M-i") 'laluxx/iedit-forward-word)
+(global-set-key (kbd "M-O") 'laluxx/open-above)
+(global-set-key (kbd "M-o") 'laluxx/open-below)
+
 (use-package general
   :ensure t
   :config
   (define-prefix-command 'Find nil)
   (define-key global-map (kbd "C-x f") 'Find)
-
-  (define-prefix-command 'Open nil)
-  (define-key global-map (kbd "C-x o") 'Open)
 
   (define-prefix-command 'Insert nil)
   (define-key global-map (kbd "C-x i") 'Insert)
@@ -66,12 +81,6 @@
    :keymaps 'Insert
    "c" 'insert-char
    "f" 'insert-file)
-
-  (general-define-key
-   :keymaps 'Open
-   "c" 'calendar
-   "w" 'other-window
-   "e" 'laluxx/eshell)
 
   (general-define-key
    :keymaps 'Find
@@ -106,15 +115,55 @@
 
 
 ;;;; UI
+
+;; Optimizations
+(setq idle-update-delay 1.0)
+
+(setq-default cursor-in-non-selected-windows nil)
+(setq highlight-nonselected-windows nil)
+
+(setq fast-but-imprecise-scrolling t)
+(setq redisplay-skip-fontification-on-input t)
+
+
 (setq custom-safe-themes t)
 (setq use-dialog-box nil)
 (setq confirm-nonexistent-file-or-buffer nil)
-(customize-set-variable 'cursor-in-non-selected-windows nil "Hide cursor in non-selected windows.")
+
+;; Title
+(setq frame-title-format '("Minimacs - %b")
+      icon-title-format frame-title-format)
 
 ;; SCROLLING
-(setq mouse-wheel-scroll-amount '(1 ((shift) . 5))) ;; one line at a time
+(setq mouse-wheel-scroll-amount '(2 ((shift) . hscroll))) ;; one line at a time
 (setq mouse-wheel-progressive-speed nil) ;; don"t accelerate scrolling
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
+
+(setq scroll-step 1
+      scroll-margin 10
+      scroll-conservatively 100000
+      auto-window-vscroll nil
+      scroll-preserve-screen-position t)
+
+;; LINE NUMBERS
+(defvar laluxx/line-number-threshold 50
+  "Minimum number of lines in a buffer to enable line numbers.")
+
+(defun my-enable-line-numbers-based-on-size ()
+  "Enable `display-line-numbers-mode' only if the buffer has more than `laluxx/line-number-threshold' lines."
+  (when (> (count-lines (point-min) (point-max)) laluxx/line-number-threshold)
+    (display-line-numbers-mode 1)))
+
+;; Add the function to prog-mode-hook
+(add-hook 'prog-mode-hook 'my-enable-line-numbers-based-on-size)
+
+
+;; TODO Make certain buffers grossly incandescent
+(use-package solaire-mode
+  :ensure t
+  :config
+  (solaire-global-mode))
+
 
 (use-package theme-magic
   :ensure t)
@@ -144,6 +193,8 @@
   (global-ligature-mode t))
 
 
+
+
 ;; TODO lambda
 (global-prettify-symbols-mode 1)
 
@@ -151,6 +202,55 @@
           (lambda ()
             (push '("lambda" . ?λ) prettify-symbols-alist)))
 
+;; Pulse current line
+(use-package pulse
+  :ensure t
+  :custom-face
+  (pulse-highlight-start-face ((t (:inherit region :background unspecified))))
+  (pulse-highlight-face ((t (:inherit region :background unspecified :extend t))))
+  :hook (((dumb-jump-after-jump imenu-after-jump) . my-recenter-and-pulse)
+         ((bookmark-after-jump magit-diff-visit-file next-error) . my-recenter-and-pulse-line))
+  :init
+  (with-no-warnings
+    (defun my-pulse-momentary-line (&rest _)
+      "Pulse the current line."
+      (pulse-momentary-highlight-one-line (point)))
+
+    (defun my-pulse-momentary (&rest _)
+      "Pulse the region or the current line."
+      (if (fboundp 'xref-pulse-momentarily)
+          (xref-pulse-momentarily)
+        (my-pulse-momentary-line)))
+
+    (defun my-recenter-and-pulse(&rest _)
+      "Recenter and pulse the region or the current line."
+      (recenter)
+      (my-pulse-momentary))
+
+    (defun my-recenter-and-pulse-line (&rest _)
+      "Recenter and pulse the current line."
+      (recenter)
+      (my-pulse-momentary-line))
+
+    (dolist (cmd '(recenter-top-bottom
+                   other-window switch-to-buffer
+                   aw-select toggle-window-split
+                   windmove-do-window-select
+                   pager-page-down pager-page-up
+                   treemacs-select-window
+                   symbol-overlay-basic-jump))
+      (advice-add cmd :after #'my-pulse-momentary-line))
+
+    (dolist (cmd '(pop-to-mark-command
+                   pop-global-mark
+                   goto-last-change))
+      (advice-add cmd :after #'my-recenter-and-pulse))))
+
+;; Pulse modified region
+(use-package goggles
+  :ensure t
+  :diminish
+  :hook ((prog-mode text-mode) . goggles-mode))
 
 (use-package rainbow-mode
   :ensure t
@@ -207,6 +307,7 @@
 ;;   (moody-replace-vc-mode)
 ;;   (moody-replace-eldoc-minibuffer-message-function))
 
+
 (use-package doom-modeline
   :ensure t
   :init (doom-modeline-mode 1)
@@ -233,7 +334,8 @@
   (doom-themes-treemacs-config)
   (doom-themes-org-config))
 
- (load-theme 'doom-material-dark t)
+ ;; (load-theme 'doom-material-dark t)
+ (load-theme 'ewal-doom-one t)
 
 (use-package kaolin-themes
   :ensure t)
@@ -656,10 +758,18 @@
 ;;   :ensure t )
 
 
-
-
-
 ;;;; DIRED
+(use-package diredfl
+  :ensure t
+  :config
+  (diredfl-global-mode))
+
+(use-package nerd-icons-dired
+  :ensure t
+  :diminish
+  :custom-face
+  (nerd-icons-dired-dir-face ((t (:inherit nerd-icons-dsilver :foreground unspecified))))
+  :hook (dired-mode . nerd-icons-dired-mode))
 
 (defvar auto-create-directory-enabled t
   "When non-nil, Emacs will automatically create non-existing directories when opening files.")
@@ -679,12 +789,6 @@
   (setq auto-create-directory-enabled (not auto-create-directory-enabled))
   (message "Auto-create directory is now %s"
            (if auto-create-directory-enabled "enabled" "disabled")))
-
-;; TODO
-(use-package diredfl
-  :ensure t
-  :config
-  (diredfl-global-mode))
 
 (defun my-dired-mode-setup ()
   "Custom keybindings and settings for `dired-mode`."
@@ -719,8 +823,13 @@
 (setq-default truncate-lines t)
 (electric-pair-mode)
 (global-auto-revert-mode 1)
+(delete-selection-mode t)
+(save-place-mode t)
 
 (use-package drag-stuff
+  :ensure t)
+
+(use-package goto-last-change
   :ensure t)
 
 (defun laluxx/move-to-beginning-if-shorter-than-column (original-func &rest args)
@@ -748,6 +857,32 @@
 
 (defvar copied-line nil "Flag to indicate if a line has been copied.")
 
+
+
+(defun laluxx/mwim-beginning ()
+  "Move point to the first non-whitespace character on this line.
+If the point is already there, move to the beginning of the line."
+  (interactive)
+  (let ((origin (point)))
+    (back-to-indentation)
+    (when (= origin (point))
+      (move-beginning-of-line 1))))
+
+(defun laluxx/mwim-end ()
+  "Move point to the end of the text on this line.
+If the point is already there, move to the end of the line."
+  (interactive)
+  (let ((origin (point)))
+    (end-of-line-text)
+    (when (= origin (point))
+      (move-end-of-line 1))))
+
+(defun end-of-line-text ()
+  "Move point to the last non-whitespace character on this line."
+  (end-of-line)
+  (skip-syntax-backward " " (line-beginning-position)))
+
+
 (defun laluxx/copy-line ()
   "Copy the current line to the clipboard and set `copied-line` to t."
   (interactive)
@@ -772,8 +907,6 @@
 	(yank))
     (yank)))
 
-(global-set-key (kbd "C-S-y") 'laluxx/copy-line)
-(global-set-key (kbd "C-y") 'laluxx/yank-line)
 
 (defun laluxx/kill-line-or-kill-region ()
   "'kill-line' if no active region, otherwise 'kill-region'."
@@ -782,7 +915,6 @@
       (call-interactively 'kill-region)
     (kill-line)))
 
-(global-set-key (kbd "C-k") 'laluxx/kill-line-or-kill-region)
 
 (defun laluxx/insert-or-evaluate-region ()
   "Insert the character 'e' if no active region, otherwise evaluate the region and then deactivate the region."
@@ -793,7 +925,6 @@
 	(keyboard-quit))  ; Deselect the region
     (insert "e")))
 
-(global-set-key (kbd "e") 'laluxx/insert-or-evaluate-region)
 
 (defun laluxx/insert-or-comment-region ()
   "Insert the character 'c' if no active region, otherwise comment the region."
@@ -813,19 +944,12 @@
 	(setq copied-line nil))
     (insert "y")))
 
-
-(global-set-key (kbd "y") 'laluxx/insert-or-copy-region)
-
 (defun laluxx/delete-char-or-kill-region ()
   "Call 'delete-char' if no active region, otherwise 'kill-region'."
   (interactive)
   (if (use-region-p)
       (kill-region (region-beginning) (region-end))
     (delete-char 1)))
-
-(global-set-key (kbd "C-d") 'laluxx/delete-char-or-kill-region)
-
-
 
 (defun laluxx/drag-down-or-forward-paragraph ()
   "If a region is active 'drag-stuff-down' else 'forward-paragraph'."
@@ -840,10 +964,6 @@
   (if (use-region-p)
       (call-interactively 'drag-stuff-up)
     (backward-paragraph)))
-
-(global-set-key (kbd "M-n") 'laluxx/drag-down-or-forward-paragraph)
-(global-set-key (kbd "M-p") 'laluxx/drag-up-or-backward-paragraph)
-
 
 (defun laluxx/forward-paragraph-select ()
   "Move forward a paragraph and extend the selection."
@@ -861,10 +981,6 @@
   (backward-paragraph)
   (activate-mark))
 
-(global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
-(global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
-(global-set-key (kbd "M-H") 'mark-paragraph)
-
 (use-package iedit
   :ensure t)
 
@@ -880,9 +996,6 @@
   (iedit-mode)
   (backward-word))
 
-(global-set-key (kbd "M-I") 'laluxx/iedit-backward-word)
-(global-set-key (kbd "M-i") 'laluxx/iedit-forward-word)
-
 (defun laluxx/open-above ()
   "Open a new line above the current line and position the cursor at its beginning."
   (interactive)
@@ -895,10 +1008,6 @@
   (interactive)
   (end-of-line)
   (newline-and-indent))
-
-(global-set-key (kbd "M-O") 'laluxx/open-above)
-(global-set-key (kbd "M-o") 'laluxx/open-below)
-
 
 
 ;;;; FUNCTIONS
@@ -1206,13 +1315,25 @@
       (with-current-buffer "*scratch*"
 	(erase-buffer)
 	(insert-file-contents scratch-file)
-	(text-scale-set 3)))))
+	(text-scale-set 0)))))
 
 (add-hook 'kill-emacs-hook 'save-scratch-buffer-to-file)
 (add-hook 'emacs-startup-hook 'load-scratch-buffer-from-file)
 
 
-;;;; PERSONAL PACKAGES
+;;;; GOOGLE THIS
+(defun laluxx/google-this (query)
+  "Search QUERY using Firefox."
+  (interactive "sGoogle: ")
+  (shell-command (concat "xdg-open 'https://www.google.com/search?q="
+                         (url-hexify-string query) "'")))
+
+(global-set-key (kbd "C-x g") 'laluxx/google-this)
+
+
+
+
+;;;; ELISP OUTLINE
 (define-derived-mode elisp-outline-mode emacs-lisp-mode "Elisp Outline"
   "Major mode for Elisp files with enhanced outline capabilities based on comment headers.")
 
@@ -1248,7 +1369,7 @@
         (outline-next-heading)))))
 
 
-(defvar elisp-outline-all-collapsed t
+(defvar elisp-outline-all-collapsed nil
   "State tracking whether all top-level headings are currently collapsed.")
 
 (defun elisp-outline-toggle-all-top-level ()
@@ -1285,7 +1406,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
+   '(goto-last-change nerd-icons-dired goggles solaire doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
