@@ -1,0 +1,43 @@
+#+TITLE: org-bars -> github.com/tonyaldon/org-bars
+
+* 1. headline
+** 1.1 headline
+*** 1.1.1 headline
+**** 1.1.1.1 headline
+***** 1.1.1.1.1 headline
+****** 1.1.1.1.1.1 headline
+******* 1.1.1.1.1.1.1 headline
+** 1.2 headline
+** 1.3 headline
+
+Some text.
+
+And a bit more.
+
+** 1.4 headline
+*** 1.4.2 headline
+
+~org-bars-mode~ is a minor mode for ~org-mode~.  It
+adds bars to the virtual indentation provided by
+the built-in package ~org-indent~.
+
+*** 1.4.3 headline
+
+#+BEGIN_SRC emacs-lisp
+(message "I hope you like it!")
+#+END_SRC
+
+** 1.5 headline
+* 2. headline
+** 2.1 headline
+**************** inline task
+
+an inline task with END line
+
+**************** END
+* 3. headline
+* 4. headline
+
+Some text.
+
+And a bit more.

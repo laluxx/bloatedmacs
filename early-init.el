@@ -14,7 +14,7 @@
 
 (set-face-attribute 'default nil
                     :family "JetBrains Mono"
-                    :weight 'bold
+                    :weight 'extrabold
                     :height 110)
 
 (setq frame-resize-pixelwise t)

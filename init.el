@@ -12,13 +12,19 @@
 ;; TODO Remember the last theme used, and load it at startup also extract the 'bg' color for the 'early-ini.el'
 ;; TODO 'elisp-outline-mode' make it automatically collapse heading when entering, make ;;; heading work and make heading look good
 
+
 ;;;; KEYBINDS
+(global-set-key (kbd "C-c h") 'consult-flycheck)
+
 (global-set-key (kbd "C-=") 'text-scale-increase)
 (global-set-key (kbd "C--") 'text-scale-decrease)
 
 (global-set-key (kbd "C-c p") 'beginning-of-buffer)
 (global-set-key (kbd "C-c n") 'end-of-buffer)
 (global-set-key (kbd "C-c C-d") 'helpful-at-point)
+
+(global-set-key (kbd "C-x C-b") 'kill-buffer)
+(global-set-key (kbd "C-x k") 'kill-current-buffer)
 
 (global-set-key (kbd "C-x w c") 'delete-window)
 (global-set-key (kbd "C-x w w") 'other-window)
@@ -52,6 +58,9 @@
 (global-set-key (kbd "M-O") 'laluxx/open-above)
 (global-set-key (kbd "M-o") 'laluxx/open-below)
 
+(global-set-key (kbd "C-c i") 'consult-imenu)
+
+
 (use-package general
   :ensure t
   :config
@@ -61,11 +70,27 @@
   (define-prefix-command 'Insert nil)
   (define-key global-map (kbd "C-x i") 'Insert)
 
+  (define-prefix-command 'Search nil)
+  (define-key global-map (kbd "C-x s") 'Search)
+
+  (define-prefix-command 'Quit nil)
+  (define-key global-map (kbd "C-x q") 'Quit)
+
   (define-prefix-command 'Theme nil)
   (define-key global-map (kbd "C-c t") 'Theme)
 
-  (define-prefix-command 'Search nil)
-  (define-key global-map (kbd "C-x s") 'Search)
+  (define-prefix-command 'Buffer nil)
+  (define-key global-map (kbd "C-c b") 'Buffer)
+
+  (general-define-key
+   :keymaps 'Buffer
+   "p" 'previous-buffer
+   "n" 'next-buffer)
+
+  (general-define-key
+   :keymaps 'Quit
+   "r" 'restart-emacs
+   "q" 'save-buffers-kill-terminal)
 
   (general-define-key
    :keymaps 'Search
@@ -85,7 +110,9 @@
   (general-define-key
    :keymaps 'Find
    "r" 'consult-recent-file
-   "e" 'consult-flymake
+   "h" 'laluxx/find-header
+   "H" 'laluxx/find-header-split
+   "e" 'consult-flycheck
    "t" 'laluxx/find-todo
    "p" 'laluxx/find-package-source-code
    "m" 'consult-man
@@ -109,12 +136,15 @@
 
 
 ;;;; GIT
-
-;; (use-package magit
-;;   :ensure t)
+(use-package magit
+  :ensure t
+  :commands magit-status)
 
 
 ;;;; UI
+(use-package diminish
+  :ensure t)
+
 
 ;; Optimizations
 (setq idle-update-delay 1.0)
@@ -129,21 +159,29 @@
 (setq custom-safe-themes t)
 (setq use-dialog-box nil)
 (setq confirm-nonexistent-file-or-buffer nil)
+(setq confirm-kill-processes nil)
+
+
 
 ;; Title
 (setq frame-title-format '("Minimacs - %b")
       icon-title-format frame-title-format)
 
 ;; SCROLLING
-(setq mouse-wheel-scroll-amount '(2 ((shift) . hscroll))) ;; one line at a time
+(setq mouse-wheel-scroll-amount '(2 ((shift) . 5))) ;; one line at a time
 (setq mouse-wheel-progressive-speed nil) ;; don"t accelerate scrolling
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
 (setq scroll-step 1
-      scroll-margin 10
+      scroll-margin 0
       scroll-conservatively 100000
       auto-window-vscroll nil
       scroll-preserve-screen-position t)
+
+(setq-default bidi-display-reordering 'left-to-right)
+(setq-default bidi-paragraph-direction 'left-to-right)
+(setq bidi-inhibit-bpa t)
+
 
 ;; LINE NUMBERS
 (defvar laluxx/line-number-threshold 50
@@ -158,41 +196,40 @@
 (add-hook 'prog-mode-hook 'my-enable-line-numbers-based-on-size)
 
 
-;; TODO Make certain buffers grossly incandescent
-(use-package solaire-mode
-  :ensure t
-  :config
-  (solaire-global-mode))
+;; Make certain buffers grossly incandescent
+;; TODO Per theme configuration
+;; (use-package solaire-mode
+;;   :ensure t
+;;   :config
+;;   (solaire-global-mode))
 
 
 (use-package theme-magic
   :ensure t)
 
-(use-package ligature
-  :ensure t
-  :config
-  ;; Enable the "www" ligature in every possible major mode
-  (ligature-set-ligatures 't '("www"))
-  ;; Enable traditional ligature support in eww-mode, if the
-  ;; `variable-pitch' face supports it
-  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
-  ;; Enable all Cascadia Code ligatures in programming modes
-  (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
-                                       ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
-                                       "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
-                                       "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
-                                       "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
-                                       "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
-                                       "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
-                                       "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
-                                       ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
-                                       "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
-                                       "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
-                                       "?=" "?." "??" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
-                                       "\\\\" "://"))
-  (global-ligature-mode t))
-
-
+;; (use-package ligature
+;;   :ensure t
+;;   :config
+;;   ;; Enable the "www" ligature in every possible major mode
+;;   (ligature-set-ligatures 't '("www"))
+;;   ;; Enable traditional ligature support in eww-mode, if the
+;;   ;; `variable-pitch' face supports it
+;;   (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
+;;   ;; Enable all Cascadia Code ligatures in programming modes
+;;   (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+;;                                        ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+;;                                        "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+;;                                        "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+;;                                        "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+;;                                        "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+;;                                        "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+;;                                        "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+;;                                        ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+;;                                        "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+;;                                        "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+;;                                        "?=" "?." "??" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+;;                                        "\\\\" "://"))
+;;   (global-ligature-mode t))
 
 
 ;; TODO lambda
@@ -202,57 +239,61 @@
           (lambda ()
             (push '("lambda" . ?λ) prettify-symbols-alist)))
 
+
 ;; Pulse current line
-(use-package pulse
-  :ensure t
-  :custom-face
-  (pulse-highlight-start-face ((t (:inherit region :background unspecified))))
-  (pulse-highlight-face ((t (:inherit region :background unspecified :extend t))))
-  :hook (((dumb-jump-after-jump imenu-after-jump) . my-recenter-and-pulse)
-         ((bookmark-after-jump magit-diff-visit-file next-error) . my-recenter-and-pulse-line))
-  :init
-  (with-no-warnings
-    (defun my-pulse-momentary-line (&rest _)
-      "Pulse the current line."
-      (pulse-momentary-highlight-one-line (point)))
+;; (use-package pulse
+;;   :ensure t
+;;   :custom-face
+;;   (pulse-highlight-start-face ((t (:inherit region :background unspecified))))
+;;   (pulse-highlight-face ((t (:inherit region :background unspecified :extend t))))
+;;   :hook (((dumb-jump-after-jump imenu-after-jump) . my-recenter-and-pulse)
+;;          ((bookmark-after-jump magit-diff-visit-file next-error) . my-recenter-and-pulse-line))
+;;   :init
+;;   (with-no-warnings
+;;     (defun my-pulse-momentary-line (&rest _)
+;;       "Pulse the current line."
+;;       (pulse-momentary-highlight-one-line (point)))
 
-    (defun my-pulse-momentary (&rest _)
-      "Pulse the region or the current line."
-      (if (fboundp 'xref-pulse-momentarily)
-          (xref-pulse-momentarily)
-        (my-pulse-momentary-line)))
+;;     (defun my-pulse-momentary (&rest _)
+;;       "Pulse the region or the current line."
+;;       (if (fboundp 'xref-pulse-momentarily)
+;;           (xref-pulse-momentarily)
+;;         (my-pulse-momentary-line)))
 
-    (defun my-recenter-and-pulse(&rest _)
-      "Recenter and pulse the region or the current line."
-      (recenter)
-      (my-pulse-momentary))
+;;     (defun my-recenter-and-pulse(&rest _)
+;;       "Recenter and pulse the region or the current line."
+;;       (recenter)
+;;       (my-pulse-momentary))
 
-    (defun my-recenter-and-pulse-line (&rest _)
-      "Recenter and pulse the current line."
-      (recenter)
-      (my-pulse-momentary-line))
+;;     (defun my-recenter-and-pulse-line (&rest _)
+;;       "Recenter and pulse the current line."
+;;       (recenter)
+;;       (my-pulse-momentary-line))
 
-    (dolist (cmd '(recenter-top-bottom
-                   other-window switch-to-buffer
-                   aw-select toggle-window-split
-                   windmove-do-window-select
-                   pager-page-down pager-page-up
-                   treemacs-select-window
-                   symbol-overlay-basic-jump))
-      (advice-add cmd :after #'my-pulse-momentary-line))
+;;     (dolist (cmd '(recenter-top-bottom
+;;                    other-window switch-to-buffer
+;;                    aw-select toggle-window-split
+;;                    windmove-do-window-select
+;;                    pager-page-down pager-page-up
+;;                    treemacs-select-window
+;;                    symbol-overlay-basic-jump))
+;;       (advice-add cmd :after #'my-pulse-momentary-line))
 
-    (dolist (cmd '(pop-to-mark-command
-                   pop-global-mark
-                   goto-last-change))
-      (advice-add cmd :after #'my-recenter-and-pulse))))
+;;     (dolist (cmd '(pop-to-mark-command
+;;                    pop-global-mark
+;;                    goto-last-change))
+;;       (advice-add cmd :after #'my-recenter-and-pulse))))
 
 ;; Pulse modified region
-(use-package goggles
-  :ensure t
-  :diminish
-  :hook ((prog-mode text-mode) . goggles-mode))
+;; (use-package goggles
+;;   :ensure t
+;;   :diminish
+;;   :hook ((prog-mode text-mode) . goggles-mode))
+
+
 
 (use-package rainbow-mode
+  :diminish
   :ensure t
   :diminish
   :hook org-mode prog-mode)
@@ -279,9 +320,12 @@
 	ewal-built-in-palette "sexy-material"))
 
 ;; WHITESPACES
-(setq whitespace-style '(face empty tabs trailing))
-(setq whitespace-line-column 80)  ; You can keep this if you might use it later
-(global-whitespace-mode 1)
+;; (setq whitespace-style '(face empty trailing))
+;; (setq whitespace-line-column 80)
+;; (global-whitespace-mode 1)
+
+;; (eval-after-load 'whitespace
+;;   '(diminish 'global-whitespace-mode))
 
 
 (use-package hl-todo
@@ -307,15 +351,15 @@
 ;;   (moody-replace-vc-mode)
 ;;   (moody-replace-eldoc-minibuffer-message-function))
 
-
 (use-package doom-modeline
   :ensure t
-  :init (doom-modeline-mode 1)
   :config
+  (doom-modeline-mode)
   (setq doom-modeline-height 35
-        doom-modeline-bar-width 5
+        doom-modeline-bar-width 0
         doom-modeline-persp-name t
         doom-modeline-persp-icon t))
+
 
 (use-package olivetti
   :ensure t)
@@ -335,7 +379,7 @@
   (doom-themes-org-config))
 
  ;; (load-theme 'doom-material-dark t)
- (load-theme 'ewal-doom-one t)
+ (load-theme 'doom-material-dark t)
 
 (use-package kaolin-themes
   :ensure t)
@@ -476,21 +520,27 @@
 
 (recentf-mode 1)
 
-
-
 ;; Default Completion
 (setq completion-auto-wrap t
       completion-auto-help 'always
       completion-show-help nil
       completions-max-height 10)
 
+;; (use-package jinx
+;;   :diminish
+;;   :ensure t
+;;   :hook (emacs-startup . global-jinx-mode)
+;;   :bind (("M-#" . jinx-correct)
+;;          ("C-M-#" . jinx-languages)))
 
 (use-package vertico
   :ensure t
   :config
+  (vertico-multiform-mode 1)
+  (add-to-list 'vertico-multiform-categories
+               '(jinx grid (vertico-grid-annotate . 20)))
   (vertico-mode))
 
-;; TODO is orderless 'slow' ?
 (use-package orderless
   :ensure t
   :init
@@ -500,6 +550,14 @@
   (setq completion-styles '(orderless basic)
         completion-category-defaults nil
         completion-category-overrides '((file (styles partial-completion)))))
+
+;; Do not allow the cursor in the minibuffer prompt
+(setq minibuffer-prompt-properties
+      '(read-only t cursor-intangible t face minibuffer-prompt))
+(add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+
+(setq enable-recursive-minibuffers t)
+
 
 
 (use-package marginalia
@@ -516,8 +574,9 @@
   :init
   (all-the-icons-completion-mode))
 
+
 (use-package corfu
-  ;; Optional customizations
+  ;; Optional customization's
   :custom
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-auto t)                 ;; Enable auto completion
@@ -529,9 +588,6 @@
   ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
   (corfu-scroll-margin 5)        ;; Use scroll margin
 
-  ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
-  ;; be used globally (M-/).  See also the customization variable
-  ;; `global-corfu-modes' to exclude certain modes.
   :ensure t
   :init
   (global-corfu-mode))
@@ -554,6 +610,12 @@
 (setq tab-always-indent 'complete)
 
 
+;; Enable Corfu completion UI
+;; See the Corfu README for more configuration tips.
+(use-package corfu
+  :init
+  (global-corfu-mode))
+
 (use-package kind-icon
   :ensure t
   :after corfu
@@ -568,6 +630,13 @@
   :init
   (global-set-key (kbd "C-x b") #'consult-buffer))
 
+;; (use-package consult-eglot
+;;   :ensure t)
+
+;; (use-package power-mode
+;;   :ensure t)
+
+
 (defun laluxx/find-todo ()
   "Search for the term 'TODO' in the current buffer."
   (interactive)
@@ -575,6 +644,7 @@
 
 
 (use-package which-key
+  :diminish
   :ensure t
   :init
   (which-key-mode))
@@ -740,36 +810,102 @@
               indent-tabs-mode nil)
 
 
+
+;; TODO enabled lang packages when a .lua file is opened 
+;; LUA
+(use-package lua-mode
+  :ensure t)
+
+;; ZIG
+(use-package zig-mode
+  :ensure t)
+
 ;; TODO make modules
 
-;; (use-package lsp-mode
-;;   :ensure t
-;;   :hook ((c-mode . lsp)
-;;          (c++-mode . lsp))
-;;   :config
-;;   (setq lsp-idle-delay 0.1) ; clangd is fast
-;;   (setq lsp-headerline-breadcrumb-enable nil))
+(use-package lsp-mode
+  :ensure t
+  :hook ((c-mode . lsp)
+         (c++-mode . lsp))
+  :config
+  (setq lsp-idle-delay 0.1) ; clangd is fast
+  (setq lsp-headerline-breadcrumb-enable nil))
 
-;; (use-package lsp-ui
-;;   :ensure t)
+(use-package lsp-ui
+  :ensure t)
+
+(use-package consult-lsp
+  :ensure t)
+
+(use-package indent-bars
+  :load-path "~/.config/emacs/lisp/indent-bars")
+
+
+;;;; ORG MODE
+
+(use-package org-bars
+  :load-path "~/.config/emacs/lisp/org-bars"
+  :config
+  (setq org-bars-stars '(:empty "◉"
+                                :invisible "◉"
+                                :visible "▼"))
+  :hook (org-mode . org-bars-mode))
+
+
+(use-package flycheck
+  :ensure t)
+
+(use-package consult-flycheck
+  :ensure t)
+
+
+(global-set-key (kbd "C-c C-g") 'evil-goto-definition)
+(global-set-key (kbd "C-x C-c") 'compile)
 
 ;; RUST
-;; (use-package rustic
-;;   :ensure t )
+(use-package rustic
+  :ensure t )
+
+
+;;;; BACKUP
+(setq make-backup-files nil)
 
 
 ;;;; DIRED
+;; TODO 'y' to copy or duplicate a file
+
+(setq dired-listing-switches
+      "-l --almost-all --human-readable --time-style=long-iso --group-directories-first --no-group")
+
+(use-package dirvish
+  :ensure t
+  :config
+  (global-set-key (kbd "C-x C-j") 'dirvish-dwim)
+  (global-set-key (kbd "C-c C-h") 'dirvish-side)
+  (setq dirvish-attributes '(nerd-icons file-size collapse subtree-state)) ;; vc-state  git-msg file-time
+  (setq dired-omit-files "^\\...+$")  ; This regex matches both '.' and '..'
+  (add-hook 'dired-mode-hook #'dired-omit-mode)
+  (dirvish-override-dired-mode))
+
+(setq dirvish-use-mode-line nil
+      dirvish-use-header-line nil)
+(setq dirvish-path-separators (list "  " "  " "  "))
+
 (use-package diredfl
   :ensure t
   :config
   (diredfl-global-mode))
 
-(use-package nerd-icons-dired
-  :ensure t
-  :diminish
-  :custom-face
-  (nerd-icons-dired-dir-face ((t (:inherit nerd-icons-dsilver :foreground unspecified))))
-  :hook (dired-mode . nerd-icons-dired-mode))
+
+
+
+
+;; NOTE Use this only if you don't use dirvish
+;; (use-package nerd-icons-dired
+;;   :ensure t
+;;   :diminish
+;;   :custom-face
+;;   (nerd-icons-dired-dir-face ((t (:inherit nerd-icons-dsilver :foreground unspecified))))
+;;   :hook (dired-mode . nerd-icons-dired-mode))
 
 (defvar auto-create-directory-enabled t
   "When non-nil, Emacs will automatically create non-existing directories when opening files.")
@@ -790,12 +926,38 @@
   (message "Auto-create directory is now %s"
            (if auto-create-directory-enabled "enabled" "disabled")))
 
+
+(defun dired-copy-file-contents-to-clipboard ()
+  "Copy the contents of the file at point in Dired to the clipboard."
+  (interactive)
+  (let* ((filename (dired-get-file-for-visit))
+         (buffer-existed (get-buffer filename))
+         (buffer (find-file-noselect filename)))
+    (with-current-buffer buffer
+      (clipboard-kill-ring-save (point-min) (point-max)))
+    (unless buffer-existed
+      (kill-buffer buffer))
+    (message "Copied %s" filename)))
+
+
 (defun my-dired-mode-setup ()
   "Custom keybindings and settings for `dired-mode`."
   (define-key dired-mode-map (kbd "b") 'dired-up-directory)
-  (auto-revert-mode 1))
+  (define-key dired-mode-map (kbd "j") 'dired-next-line)
+  (define-key dired-mode-map (kbd "k") 'dired-previous-line)
+  (define-key dired-mode-map (kbd "h") 'dired-up-directory)
+  (define-key dired-mode-map (kbd "l") 'dired-find-file)
+  (define-key dired-mode-map (kbd "C-s") 'find-file)
+  (define-key dired-mode-map (kbd "TAB") 'dirvish-subtree-toggle)
+  (define-key dired-mode-map (kbd "y") 'dired-copy-file-contents-to-clipboard)
+
+  ;; (auto-revert-mode 1)
+  )
 
 (add-hook 'dired-mode-hook 'my-dired-mode-setup)
+
+
+
 
 ;;;; ISEARCH
 ;; TODO while typing wrapping
@@ -815,8 +977,11 @@
   (unless isearch-success
     (isearch-repeat-backward)))
 
-(define-key isearch-mode-map (kbd "C-s") 'isearch-repeat-forward+)
-(define-key isearch-mode-map (kbd "C-r") 'isearch-repeat-backward+)
+;; (define-key isearch-mode-map (kbd "C-s") 'isearch-repeat-forward+)
+;; (define-key isearch-mode-map (kbd "C-r") 'isearch-repeat-backward+)
+
+(global-set-key (kbd "C-r") 'isearch-forward)
+(global-set-key (kbd "C-s") 'consult-line)
 
 
 ;;;; EDITING
@@ -826,11 +991,15 @@
 (delete-selection-mode t)
 (save-place-mode t)
 
+
+(use-package evil
+  :ensure t)
+
 (use-package drag-stuff
   :ensure t)
 
-(use-package goto-last-change
-  :ensure t)
+;; (use-package goto-last-change
+;;   :ensure t)
 
 (defun laluxx/move-to-beginning-if-shorter-than-column (original-func &rest args)
   "Move cursor to the beginning of the line if the new line after executing ORIGINAL-FUNC is shorter than the current column position."
@@ -1011,6 +1180,67 @@ If the point is already there, move to the end of the line."
 
 
 ;;;; FUNCTIONS
+
+;; BUFFERS
+(defun laluxx/kill-current-buffer ()
+  "Kill the current buffer without prompting."
+  (interactive)
+  (kill-buffer (current-buffer)))
+
+;; C
+(defun laluxx/copy-project ()
+  "Concatenate the content of all .c and .h files in the current directory and copy to the clipboard."
+  (interactive)
+  (let ((files (directory-files "." t "\\.[ch]$"))
+        (content ""))
+    (dolist (file files)
+      (setq content (concat content (when (file-readable-p file)
+                                       (with-temp-buffer
+                                         (insert-file-contents file)
+                                         (buffer-string)))
+                             "\n\n"))) ; Add extra newlines between files for readability
+    (unless (string= content "")
+      (kill-new content)
+      (message "Copied content of .c and .h files to clipboard."))))
+
+
+(defun laluxx/find-header ()
+  "Toggle between a C source file and its corresponding header file."
+  (interactive)
+  (let* ((current-file (buffer-file-name))
+         (extension (file-name-extension current-file))
+         (base-name (file-name-sans-extension current-file))
+         target-file)
+    ;; Determine the target file based on the extension of the current file
+    (setq target-file
+          (cond ((string= extension "c") (concat base-name ".h"))
+                ((string= extension "h") (concat base-name ".c"))
+                (t (error "Not a C or Header file: %s" current-file))))
+    ;; Check if the target file exists and open it
+    (if (file-exists-p target-file)
+        (find-file target-file)
+      (message "File does not exist: %s" target-file))))
+
+(defun laluxx/find-header-split ()
+  "Toggle between a C source file and its corresponding header file in a new split window."
+  (interactive)
+  (let* ((current-file (buffer-file-name))
+         (extension (file-name-extension current-file))
+         (base-name (file-name-sans-extension current-file))
+         (target-file (cond ((string= extension "c") (concat base-name ".h"))
+                            ((string= extension "h") (concat base-name ".c"))
+                            (t (error "Not a C or Header file: %s" current-file)))))
+    ;; Check if the target file exists
+    (if (file-exists-p target-file)
+        (progn
+          ;; Split the window and find the file in the new window
+          (split-window-right) ;; or `split-window-below` to split horizontally
+          (other-window 1)
+          (find-file target-file))
+      (message "File does not exist: %s" target-file))))
+
+
+
 (defun laluxx/find-package-source-code ()
   "NOTE Work only with 'elpa' opens a .el file corresponding to the extended 'word' under the cursor in the ~/.config/emacs/elpa/ directory in a new window."
   (interactive)
@@ -1044,10 +1274,8 @@ If the point is already there, move to the end of the line."
       (unless found
 	(message "No directory starts with: %s" package-name)))))
 
-
-;; EMACS DIR MANAGEMENT
 (defun laluxx/clean-emacs-config ()
-  "Delete all directories inside ~/.config/emacs/ not named 'scripts'
+  "Delete all directories inside ~/.config/emacs/ not named 'scripts' or 'lisp'
    and all files not named 'init.el' or 'early-init.el'."
   (interactive)
   (let ((root-dir "~/.config/emacs/"))
@@ -1058,13 +1286,12 @@ If the point is already there, move to the end of the line."
         (cond
          ;; Check if entry is a directory
          ((file-directory-p entry)
-          (unless (string= (file-name-nondirectory entry) "scripts")
+          (unless (member (file-name-nondirectory entry) '("scripts" "lisp"))
             (delete-directory entry t)))
          ;; Check for file conditions
          ((file-regular-p entry)
           (unless (member (file-name-nondirectory entry) '("init.el" "early-init.el"))
             (delete-file entry))))))))
-
 
 (defun laluxx/recompile-emacs ()
   "Restart and recompile emacs"
@@ -1073,10 +1300,7 @@ If the point is already there, move to the end of the line."
   (restart-emacs))
 
 
-
-
 ;;;; WINDOW MANAGMENT
-
 (defun swap-with-prev-window ()
   "Swap the current window with the previous one,
    open 'scratch-buffer' if only one window."
@@ -1331,8 +1555,6 @@ If the point is already there, move to the end of the line."
 (global-set-key (kbd "C-x g") 'laluxx/google-this)
 
 
-
-
 ;;;; ELISP OUTLINE
 (define-derived-mode elisp-outline-mode emacs-lisp-mode "Elisp Outline"
   "Major mode for Elisp files with enhanced outline capabilities based on comment headers.")
@@ -1391,6 +1613,30 @@ If the point is already there, move to the end of the line."
 (define-key elisp-outline-mode-map (kbd "C-c C-u") 'outline-up-heading)
 
 
+(use-package spacious-padding
+  :ensure t
+  :config
+  (general-after-init(spacious-padding-mode)))
+
+
+;;;; WEB BROWSING
+
+(defun my-eww-mode-setup ()
+  "Set up EWW with custom settings."
+  (olivetti-mode 1)
+  (olivetti-set-width 120))
+
+(add-hook 'eww-mode-hook 'my-eww-mode-setup)
+
+;; (use-package xwwp-follow-link
+;;   :load-path "~/.emacs.d/xwwp-follow-link"
+;;   :custom
+;;   (xwwp-follow-link-completion-system 'ivy)
+;;   :bind (:map xwidget-webkit-mode-map
+;;               ("v" . xwwp-follow-link)))
+
+
+
 ;;;; PROFILER
 
 (run-with-idle-timer
@@ -1406,10 +1652,27 @@ If the point is already there, move to the end of the line."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(goto-last-change nerd-icons-dired goggles solaire doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
+   '(indent-bars consult-lsp consult-flycheck flycheck lua-mode neotree treemacs elpher isearch-mb anzu auto-dim-other-buffers color-theme-sanityinc-tomorrow mindre-theme lamda-themes dired-plus dired+ dired-hacks dirvish-icons diminish power-mode consult-eglot org-bars affe jinx cape evil zig-mode goto-last-change nerd-icons-dired goggles solaire doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(fringe ((t :background "#212121")))
+ '(header-line ((t :box (:line-width 4 :color "grey20" :style nil))))
+ '(header-line-highlight ((t :box (:color "#C5C8C6"))))
+ '(keycast-key ((t)))
+ '(line-number ((t :background "#212121")))
+ '(mode-line ((t :box (:line-width 6 :color "grey75" :style nil))))
+ '(mode-line-active ((t :box (:line-width 6 :color "grey75" :style nil))))
+ '(mode-line-highlight ((t :box (:color "#C5C8C6"))))
+ '(mode-line-inactive ((t :box (:line-width 6 :color "grey30" :style nil))))
+ '(tab-bar-tab ((t :box (:line-width 4 :color "grey85" :style nil))))
+ '(tab-bar-tab-inactive ((t :box (:line-width 4 :color "grey75" :style nil))))
+ '(tab-line-tab ((t)))
+ '(tab-line-tab-active ((t)))
+ '(tab-line-tab-inactive ((t)))
+ '(vertical-border ((t :background "#212121" :foreground "#212121")))
+ '(window-divider ((t (:background "#212121" :foreground "#212121"))))
+ '(window-divider-first-pixel ((t (:background "#212121" :foreground "#212121"))))
+ '(window-divider-last-pixel ((t (:background "#212121" :foreground "#212121")))))
