@@ -1,8 +1,12 @@
 .cache
 auto-save-list
+eaf
 elpa
 eshell
+transient
+url
 history
+ielm-history.eld
 places
 recentf
 scratch

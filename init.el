@@ -1,3 +1,14 @@
+;; (profiler-start 'cpu)
+
+;; (add-hook 'emacs-startup-hook
+;;           (lambda ()
+;;             (profiler-stop)
+;;             (profiler-report)))
+
+;; TODO customize the non focused modeline 
+;; TODO 'C-S-s'
+
+
 ;; MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
@@ -6,25 +17,44 @@
 ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 (package-initialize)
 
-;; IMPORTANT Why some packages are not installing
+;; TODO 'C-backspace' should work with came case like ded
+
+;; TODO 'popper' make popup take just enough space for the text to fit
 ;; TODO 'C-S-n' and 'C-S-p' should behave like visual-line mode in vim and always go to the beginning of the line
 ;; TODO Remember the last mode the 'scratch-buffer' was is and load it at startup
 ;; TODO Remember the last theme used, and load it at startup also extract the 'bg' color for the 'early-ini.el'
 ;; TODO 'elisp-outline-mode' make it automatically collapse heading when entering, make ;;; heading work and make heading look good
+;; TODO 'C-h-e' should toggle
+
+
+(use-package elfeed
+  :ensure t
+  :config
+  (setq elfeed-feeds
+        '(("http://nullprogram.com/feed/" blog emacs)
+          "http://www.50ply.com/atom.xml"  ; no autotagging
+          ("http://nedroid.com/feed/" webcomic))))
 
 
 ;;;; KEYBINDS
+
+;; LSP
+(global-set-key (kbd "C-S-K") 'lsp-ui-doc-show)
 (global-set-key (kbd "C-c h") 'consult-flycheck)
 
+;; TODO if point is ontop of an image
+;; call instead image-mouse-decrease-size
 (global-set-key (kbd "C-=") 'text-scale-increase)
 (global-set-key (kbd "C--") 'text-scale-decrease)
 
+(global-set-key (kbd "C-M-j") 'eval-last-sexp)
 (global-set-key (kbd "C-c p") 'beginning-of-buffer)
 (global-set-key (kbd "C-c n") 'end-of-buffer)
 (global-set-key (kbd "C-c C-d") 'helpful-at-point)
 
 (global-set-key (kbd "C-x C-b") 'kill-buffer)
 (global-set-key (kbd "C-x k") 'kill-current-buffer)
+(global-set-key (kbd "C-h i") 'info-display-manual)
 
 (global-set-key (kbd "C-x w c") 'delete-window)
 (global-set-key (kbd "C-x w w") 'other-window)
@@ -53,8 +83,6 @@
 (global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
 (global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
 (global-set-key (kbd "M-H") 'mark-paragraph)
-(global-set-key (kbd "M-I") 'laluxx/iedit-backward-word)
-(global-set-key (kbd "M-i") 'laluxx/iedit-forward-word)
 (global-set-key (kbd "M-O") 'laluxx/open-above)
 (global-set-key (kbd "M-o") 'laluxx/open-below)
 
@@ -98,6 +126,8 @@
 
   (general-define-key
    :keymaps 'Theme
+   ;; "t" 'toggle-theme-between-doom-material-dark-and-doom-badger
+   "t" 'laluxx/toggle-theme-pair
    "d" 'laluxx/consult-dark-themes
    "l" 'laluxx/consult-light-themes
    "u" 'laluxx/consult-ugly-themes)
@@ -114,6 +144,7 @@
    "H" 'laluxx/find-header-split
    "e" 'consult-flycheck
    "t" 'laluxx/find-todo
+   "n" 'laluxx/find-note
    "p" 'laluxx/find-package-source-code
    "m" 'consult-man
    "i" 'consult-find
@@ -126,7 +157,8 @@
 
 
 (defun laluxx/file-jump ()
-  "Prompt to open a file interactively, and if not aborted, open it in a new window split vertically."
+  "Prompt to open a file interactively.
+if not aborted,open it in a new window split vertically."
   (interactive)
   (let ((file (read-file-name "File jump: ")))
     (when file
@@ -138,12 +170,166 @@
 ;;;; GIT
 (use-package magit
   :ensure t
-  :commands magit-status)
+  :commands magit-status
+  :config
+  (global-set-key (kbd "C-h g") #'magit-status))
+
+
+;;;; COMPILATION
+(setq compilation-scroll-output t)
+(setq compilation-always-kill t)
+
+
+
+;;;; IELM
+(setq ielm-header "")
+(setq ielm-prompt "λ🢒 ")
+
+(add-hook 'ielm-mode-hook (lambda ()
+                            (define-key ielm-map (kbd "C-l")
+                              (lambda ()
+                                (interactive)
+                                (recenter-top-bottom 0)))))
+
+
+
+;; (use-package gptel
+;;   :ensure t
+;;   :config
+;;   (global-set-key (kbd "C-c RET") #'gptel-send)
+;;   (global-set-key (kbd "C-c m") #'gptel-menu))
+
+;; (defun simulate-keypress-sequence ()
+;;   (interactive)
+;;   (execute-kbd-macro (kbd "C-c m"))
+;;   (sit-for 0.5)
+;;   (execute-kbd-macro "m")
+;;   (sit-for 0.5)
+;;   (execute-kbd-macro "e")
+;;   (sit-for 0.5)
+;;   (execute-kbd-macro (kbd "RET")))
+
+;; (global-set-key (kbd "C-c j") #'simulate-keypress-sequence)
+
+
+
+;;;; PDF
+;; (use-package pdf-tools
+;;   :ensure t
+;;   :config
+;;   (pdf-tools-install)
+;;   (setq pdf-view-midnight-colors '("#FFFFFF" . "#212121"))
+;;   (add-hook 'pdf-view-mode-hook (lambda ()
+;;                                   (pdf-view-midnight-minor-mode 1))))
 
 
 ;;;; UI
+
+;; POINTER
+
+;; TODO background and selection
+(defun laluxx/pointer-color-update ()
+  "Update the cursor color based on the foreground color of the character at point."
+  (let* ((pos (point))
+         ;; Attempt to find the face using overlays first, then text properties.
+         (face (or (car (face-at-point nil t))  ; Get face from overlays/text properties.
+                   'default))  ; Fallback to default if no face is found.
+         (fg-color (face-attribute face :foreground nil t))
+         ;; Fallback cursor color if fg is unspecified or face attribute fails.
+         (cursor-color (if (or (not fg-color) (string= fg-color "unspecified"))
+                           "red"
+                         fg-color)))
+    ;; Set the cursor color if it differs from the current one to minimize updates.
+    (unless (equal cursor-color (frame-parameter nil 'cursor-color))
+      (set-cursor-color cursor-color))))
+
+(add-hook 'post-command-hook 'laluxx/pointer-color-update)
+
+
+;; IMPROVE
+;; (defun my/cursor-color-update ()
+;;   "Update the cursor color based on the foreground color of the character at point or the region background color."
+;;   (let* ((pos (point))
+;;          ;; Attempt to find the face using overlays first, then text properties.
+;;          (face (or (car (face-at-point nil t))  ; Get face from overlays/text properties.
+;;                    'default))  ; Fallback to default if no face is found.
+;;          (fg-color (face-attribute face :foreground nil t))
+;;          ;; Use the background color of the 'region' face as the fallback color.
+;;          (region-bg-color (face-attribute 'region :background nil t))
+;;          ;; Determine cursor color, fallback to region background color if fg is unspecified.
+;;          (cursor-color (if (or (not fg-color) (string= fg-color "unspecified"))
+;;                            region-bg-color
+;;                          fg-color)))
+;;     ;; Set the cursor color if it differs from the current one to minimize updates.
+;;     (unless (equal cursor-color (frame-parameter nil 'cursor-color))
+;;       (set-cursor-color cursor-color))))
+
+;; (add-hook 'post-command-hook 'my/cursor-color-update)
+
+
+
+(defun set-minibuffer-cursor-style ()
+  (setq cursor-type 'bar))
+
+(add-hook 'minibuffer-setup-hook 'set-minibuffer-cursor-style)
+
+(defun my/set-cursor-style ()
+  "Set cursor style based on the number of lines in the selection, excluding the minibuffer."
+  (unless (window-minibuffer-p)
+    (setq cursor-type (if (use-region-p)
+                          (if (= (line-number-at-pos (region-beginning))
+                                 (line-number-at-pos (region-end)))
+                              'bar  ; Selection within a single line
+                            'box) ; Selection spans multiple lines
+                        'box))))  ; No active selection
+
+(add-hook 'post-command-hook 'my/set-cursor-style)
+
+
+
+
 (use-package diminish
   :ensure t)
+
+(use-package iscroll
+  :ensure t)
+
+
+(use-package olivetti
+  :ensure t
+  :config
+  (global-set-key (kbd "C-<") #'olivetti-expand)
+  (global-set-key (kbd "C->") #'olivetti-shrink))
+
+
+;; INFO
+
+(defun my-info-mode-setup ()
+  "Set up my preferences for Info mode."
+  (olivetti-mode 1)
+  (olivetti-set-width 82))
+
+(add-hook 'Info-mode-hook 'my-info-mode-setup)
+
+
+(defun open-info-root-menu-and-bury ()
+  "Open Info and jump directly to the root menu."
+  (interactive)
+  (info "dir")
+  (call-interactively 'Info-menu))
+
+
+
+;; READONLY
+;; TODO change cursor color to warning and add npfb keybinds
+(defun toggle-blink-cursor-based-on-read-only ()
+  "Disable blinking cursor in read-only buffers."
+  (if buffer-read-only
+      (blink-cursor-mode 0)  ; Disable cursor blinking
+    (blink-cursor-mode 1)))  ; Enable cursor blinking
+
+(add-hook 'find-file-hook 'toggle-blink-cursor-based-on-read-only)
+(add-hook 'read-only-mode-hook 'toggle-blink-cursor-based-on-read-only)
 
 
 ;; Optimizations
@@ -162,7 +348,6 @@
 (setq confirm-kill-processes nil)
 
 
-
 ;; Title
 (setq frame-title-format '("Minimacs - %b")
       icon-title-format frame-title-format)
@@ -171,6 +356,18 @@
 (setq mouse-wheel-scroll-amount '(2 ((shift) . 5))) ;; one line at a time
 (setq mouse-wheel-progressive-speed nil) ;; don"t accelerate scrolling
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
+
+
+
+;; TODO Do this only in a buffer alist '(eww)
+;; (setq jit-lock-defer-time 0)
+;; (pixel-scroll-mode)
+;; (setq pixel-dead-time 0) ; Never go back to the old scrolling behaviour.
+;; (setq pixel-resolution-fine-flag t) ; Scroll by number of pixels instead of lines (t = frame-char-height pixels).
+;; (setq mouse-wheel-scroll-amount '(1)) ; Distance in pixel-resolution to scroll each mouse wheel event.
+;; (setq mouse-wheel-progressive-speed nil) ; Progressive speed is too fast for me.
+
+
 
 (setq scroll-step 1
       scroll-margin 0
@@ -207,37 +404,50 @@
 (use-package theme-magic
   :ensure t)
 
-;; (use-package ligature
-;;   :ensure t
-;;   :config
-;;   ;; Enable the "www" ligature in every possible major mode
-;;   (ligature-set-ligatures 't '("www"))
-;;   ;; Enable traditional ligature support in eww-mode, if the
-;;   ;; `variable-pitch' face supports it
-;;   (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
-;;   ;; Enable all Cascadia Code ligatures in programming modes
-;;   (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
-;;                                        ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
-;;                                        "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
-;;                                        "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
-;;                                        "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
-;;                                        "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
-;;                                        "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
-;;                                        "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
-;;                                        ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
-;;                                        "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
-;;                                        "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
-;;                                        "?=" "?." "??" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
-;;                                        "\\\\" "://"))
-;;   (global-ligature-mode t))
+(use-package ligature
+  :ensure t
+  :config
+  ;; Enable the "www" ligature in every possible major mode
+  (ligature-set-ligatures 't '("www"))
+  ;; Enable traditional ligature support in eww-mode, if the
+  ;; `variable-pitch' face supports it
+  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
+  ;; Enable all Cascadia Code ligatures in programming modes
+  (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+                                       ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+                                       "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+                                       "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+                                       "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+                                       "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+                                       "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+                                       "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+                                       ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+                                       "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+                                       "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+                                       "?=" "?." "??" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+                                       "\\\\" "://"))
+  (global-ligature-mode t))
 
 
-;; TODO lambda
+
+;; PRETTIFY SYMBOLS
 (global-prettify-symbols-mode 1)
 
-(add-hook 'emacs-lisp-mode-hook
-          (lambda ()
-            (push '("lambda" . ?λ) prettify-symbols-alist)))
+;; (defun prettify-set ()
+;;   (setq prettify-symbols-alist
+;;         '(("lambda" . "λ")
+;;           ("|>"     . "▶") ;; ▷
+;;           ("<|"     . "◀") ;; ◁
+;;           ("<="     . "≤")
+;;           (">="     . "≥")
+;;           ;; ("->>"    . "↠")
+;;           ;; ("->"     . "→")
+;;           ;; ("<-"     . "←")
+;;           ;; ("=>"     . "⇒")
+;;           )))
+;; (add-hook 'prog-mode-hook 'prettify-set)
+
+
 
 
 ;; Pulse current line
@@ -304,6 +514,7 @@
   :hook (prog-mode . rainbow-delimiters-mode))
 
 
+
 (use-package ewal
   :ensure t
   :init
@@ -341,8 +552,10 @@
 	  ("REVIEW"     font-lock-keyword-face bold)
 	  ("NOTE"       success bold)
 	  ("IMPORTANT"  success bold)
-	  ("DEPRECATED" font-lock-doc-face bold))))
+	  ("DEPRECATED" font-lock-doc-face bold)
+	  ("LATER" font-lock-doc-face bold))))
 
+;; DEPRECATED 
 ;; (use-package moody
 ;;   :ensure t
 ;;   :config
@@ -360,16 +573,29 @@
         doom-modeline-persp-name t
         doom-modeline-persp-icon t))
 
+(use-package spacious-padding
+  :ensure t
+  :config
+  (general-after-init(spacious-padding-mode)))
 
-(use-package olivetti
+
+;;;; THEME
+
+(use-package catppuccin-theme
   :ensure t)
 
-;;;; THEMES
+(use-package timu-caribbean-theme
+  :ensure t)
+
+(use-package spacemacs-theme
+  :ensure t)
+
+
 (use-package doom-themes
   :ensure t
   :config
   (setq doom-themes-enable-bold t
-	doom-themes-enable-italic t)
+        doom-themes-enable-italic t)
   ;; (doom-themes-visual-bell-config)
   ;; Enable custom neotree theme (all-the-icons must be installed!)
   (doom-themes-neotree-config)
@@ -387,6 +613,7 @@
 (use-package ef-themes
   :ensure t)
 
+
 (defvar dark-themes '(doom-badger doom-pine doom-laserwave doom-one doom-1337 doom-nord doom-dark+ doom-henna doom-opera doom-rouge doom-xcode
 				  doom-snazzy doom-Iosvkem doom-dracula doom-gruvbox doom-horizon doom-lantern doom-molokai doom-peacock doom-vibrant
 				  doom-zenburn doom-ayu-dark doom-manegarm doom-material doom-miramare doom-old-hope doom-ephemeral doom-moonlight doom-palenight
@@ -396,13 +623,13 @@
 				  doom-monokai-octagon doom-outrun-electric doom-monokai-spectrum doom-shades-of-purple doom-monokai-ristretto doom-solarized-dark-high-contrast
 				  ef-duo-dark ef-bio ef-dark ef-rosa ef-night ef-autumn ef-cherie ef-winter ef-elea-dark ef-symbiosis ef-trio-dark ef-maris-dark ef-melissa-dark
 				  ef-tritanopia-dark ef-deuteranopia-dark kaolin-bubblegum kaolin-dark kaolin-eclipse kaolin-ocean kaolin-shiva kaolin-aurora kaolin-galaxy
-				  kaolin-temple kaolin-blossom kaolin-mono-dark kaolin-valley-dark modus-vivendi ewal-doom-one ewal-doom-vibrant)
+				  kaolin-temple kaolin-blossom kaolin-mono-dark kaolin-valley-dark modus-vivendi ewal-doom-one ewal-doom-vibrant timu-caribbean spacemacs-dark)
   "List of dark color themes.")
 
 (defvar light-themes '(doom-plain doom-ayu-light doom-earl-grey doom-flatwhite doom-one-light doom-nord-light doom-opera-light doom-acario-light doom-homage-white doom-tomorrow-day
 				  doom-bluloco-light doom-feather-light doom-gruvbox-light doom-oksolar-light doom-solarized-light ef-day ef-frost ef-light ef-cyprus ef-kassio
 				  ef-spring ef-summer ef-arbutus ef-duo-light ef-elea-light ef-trio-light ef-maris-light ef-melissa-light ef-tritanopia-light ef-deuteranopia-light
-				  kaolin-light kaolin-breeze kaolin-mono-light kaolin-valley-light adwaita modus-operandi)
+				  kaolin-light kaolin-breeze kaolin-mono-light kaolin-valley-light adwaita modus-operandi spacemacs-light)
   "List of light color themes.")
 
 (defvar ugly-themes '(doom-nova doom-meltbus doom-ir-black doom-homage-black manoj-dark light-blue misterioso tango-dark tsdh-light wheatgrass whiteboard deeper-blue leuven-dark)
@@ -440,6 +667,7 @@
       (mapc #'disable-theme custom-enabled-themes)
       (when original-theme
 	(load-theme original-theme t))))
+
 
 (defun laluxx/consult-light-themes ()
   "Select and load a theme from the list of light themes with a preview, restoring the original theme if aborted."
@@ -505,6 +733,33 @@
       (when original-theme
 	(load-theme original-theme t))))
 
+
+;; MINIMA THEMES
+
+(add-to-list 'custom-theme-load-path "~/.config/emacs/lisp/themes/")
+
+;; TODO if also-toggle-xorg-colors call from-emacs
+;; TODO start based on "dark" or "light"
+(defvar opposite-theme-pairs
+  '((doom-one . doom-one-light)
+    (doom-badger . doom-material-dark)
+    (doom-nord . doom-nord-light)
+    (doom-dracula . doom-solarized-light)
+    (doom-solarized-dark . doom-solarized-light))
+  "Pairs of dark and light themes.")
+
+(defun laluxx/toggle-theme-pair ()
+  "Toggle between paired themes defined in `opposite-theme-pairs`."
+  (interactive)
+  (let* ((current-theme (car custom-enabled-themes))
+         (pair (or (assoc current-theme opposite-theme-pairs) (rassoc current-theme opposite-theme-pairs)))
+         (next-theme (if (eq current-theme (car pair)) (cdr pair) (car pair))))
+    (when pair
+      (mapc #'disable-theme custom-enabled-themes)
+      (load-theme next-theme t)
+      (message "Switched to theme: %s" next-theme))))
+
+
 ;;;; COMPLETION
 ;;(setq history-length 25)
 (savehist-mode)
@@ -532,6 +787,105 @@
 ;;   :hook (emacs-startup . global-jinx-mode)
 ;;   :bind (("M-#" . jinx-correct)
 ;;          ("C-M-#" . jinx-languages)))
+
+
+;; TODO 'eshell' is not a popup when spawned
+(use-package popper
+  :ensure t
+  :config
+  (global-set-key (kbd "C-;") #'popper-toggle)
+  (global-set-key (kbd "C-'") #'popper-cycle)
+  (global-set-key (kbd "M-;") #'popper-toggle-type)
+  ;; (setq popper-display-function #'display-buffer-in-child-frame) ; TODO
+  (setq popper-window-height 15)
+  (setq popper-reference-buffers
+        '(Custom-mode
+          compilation-mode
+          messages-mode
+          help-mode
+          occur-mode
+          eshell-mode
+          "^\\*Warnings\\*"
+          "^\\*Compile-Log\\*"
+          "^\\*HS-Error\\*"
+          "^\\*shell\\*"
+          "^\\*Messages\\*"
+          "^\\*Backtrace\\*"
+          "^\\*evil-registers\\*"
+          "^\\*ielm\\*"
+          "^\\*TeX Help\\*"
+          "^\\*Shell Command Output\\*"
+          "^\\*Async Shell Command\\*"
+          "^\\*Completions\\*"
+          "^\\*Apropos"
+          "Calc:"
+          "[Oo]utput\\*"))
+  (popper-mode))
+
+;; NOTE This might not be needed
+(defun my/popper-hide-modeline ()
+  (setq-local mode-line-format nil))
+(add-hook 'popper-open-popup-hook 'my/popper-hide-modeline)
+
+(defun laluxx/hide-modeline-for-popups ()
+  "Hide the modeline in specific buffers."
+  (when (or (string= (buffer-name) "*Warnings*")
+            (string= (buffer-name) "*Compile-Log*")
+            (string= (buffer-name) "*ielm*")
+            (string= (buffer-name) "*shell*")
+            (string= (buffer-name) "*eshell*")
+            (string= (buffer-name) "*HS-Error*")
+            (string= (buffer-name) "*Help*")
+            (string= (buffer-name) "*Apropos*")
+            (string= (buffer-name) "*Disabled Command*")
+            (string= (buffer-name) "*Backtrace*")
+            (string= (buffer-name) "*compilation*")
+            (string= (buffer-name) "*Shell Command Output*")
+           )
+    (setq mode-line-format nil)))
+
+(add-hook 'after-change-major-mode-hook 'laluxx/hide-modeline-for-popups)
+
+;; Why do i have to do it like this 
+(with-current-buffer "*Messages*"
+  (setq mode-line-format nil))
+
+
+;;;; MINIBUFFER
+;; TODO it doesnt really work
+(defun my-toggle-variable-via-embark ()
+  "Toggle a variable directly using Embark's toggle variable function, applying it to the currently highlighted candidate in Vertico."
+  (interactive)
+  (let* ((candidates (embark--vertico-candidates))
+         (type (car candidates))
+         (candidate (vertico--candidate)))
+    (when (and (eq type 'variable) candidate (boundp (intern candidate)))
+      (embark-toggle-variable (intern candidate)))))
+
+
+;; (defun my-set-variable-via-embark ()
+;;   "Set a variable directly using Embark's insert variable value function, applying it to the currently highlighted candidate in Vertico."
+;;   (interactive)
+;;   (let* ((candidates (embark--vertico-candidates))
+;;          (type (car candidates))
+;;          (candidate (vertico--candidate)))
+;;     (when (and (eq type 'variable) candidate (boundp (intern candidate)))
+;;       (embark-insert-variable-value (intern candidate)))))
+
+(with-eval-after-load 'vertico
+  ;; Bind the custom Embark functions to C-t and C-s within Vertico's context
+  (define-key vertico-map (kbd "C-t") #'my-toggle-variable-via-embark)
+  ;; (define-key vertico-map (kbd "C-s") #'my-set-variable-via-embark)
+  )
+
+(use-package embark
+  :ensure t
+  :bind
+  ("C-." . embark-act)
+  ("C-," . embark-become))
+
+(use-package embark-consult
+  :ensure t)
 
 (use-package vertico
   :ensure t
@@ -610,11 +964,25 @@
 (setq tab-always-indent 'complete)
 
 
-;; Enable Corfu completion UI
-;; See the Corfu README for more configuration tips.
-(use-package corfu
-  :init
-  (global-corfu-mode))
+;; (use-package cape
+;;   :init
+;;   ;; Add to the global default value of `completion-at-point-functions' which is
+;;   ;; used by `completion-at-point'.  The order of the functions matters, the
+;;   ;; first function returning a result wins.  Note that the list of buffer-local
+;;   ;; completion functions takes precedence over the global list.
+;;   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+;;   (add-to-list 'completion-at-point-functions #'cape-file)
+;;   (add-to-list 'completion-at-point-functions #'cape-elisp-block)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-history)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-keyword)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-tex)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-elisp-symbol)
+;;   ;;(add-to-list 'completion-at-point-functions #'cape-line)
+;; )
 
 (use-package kind-icon
   :ensure t
@@ -633,14 +1001,17 @@
 ;; (use-package consult-eglot
 ;;   :ensure t)
 
-;; (use-package power-mode
-;;   :ensure t)
-
 
 (defun laluxx/find-todo ()
   "Search for the term 'TODO' in the current buffer."
   (interactive)
   (consult-line "TODO"))
+
+(defun laluxx/find-note ()
+  "Search for the term 'NOTE' in the current buffer."
+  (interactive)
+  (consult-line "NOTE"))
+
 
 
 (use-package which-key
@@ -655,7 +1026,49 @@
   (global-set-key (kbd "C-h f") #'helpful-callable)
   (global-set-key (kbd "C-h v") #'helpful-variable)
   (global-set-key (kbd "C-h k") #'helpful-key)
-  (global-set-key (kbd "C-h x") #'helpful-command))
+  (global-set-key (kbd "C-h x") #'helpful-command)
+  :hook (helpful-mode . my-helpful-olivetti-setup))
+
+(defun my-helpful-olivetti-setup ()
+  "Enable Olivetti mode and set the preferred width."
+  (olivetti-mode 1)
+  (olivetti-set-width 84))
+
+
+;;;; SHELL
+
+;; TODO 'C-c-C-j' dwim open on the bottom of the current buffer only
+;; if you are in a vertical split
+(setq shell-file-name "/bin/bash")
+(add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+
+;; Don't ask for confirmation when killing a running process
+(setq kill-buffer-query-functions
+      (remq 'process-kill-buffer-query-function kill-buffer-query-functions))
+
+(add-hook 'shell-mode-hook
+          (lambda ()
+            (local-set-key (kbd "<up>") 'comint-previous-input)
+            (local-set-key (kbd "<down>") 'comint-next-input)
+            (local-set-key (kbd "C-l") 'comint-clear-buffer)))
+
+
+(defun toggle-shell ()
+  (interactive)
+  (if (get-buffer "*shell*")
+      (if (equal (current-buffer) (get-buffer "*shell*"))
+          (bury-buffer)
+        (shell))
+    (shell)))
+
+(global-set-key (kbd "C-c C-j") 'toggle-shell)
+
+
+
+
+
+
+
 
 ;;;; ESHELL
 (use-package eshell
@@ -795,11 +1208,127 @@
 
 
 ;;;; LANGUAGES
+
+;; LISP
+
+(setq inferior-lisp-program "clisp")
+
+
+;; LISP Configuration with enhanced SLY interaction
+(use-package sly
+  :ensure t
+  :config
+  (setq sly-command-switch-to-existing-lisp 'always)
+  (setq inferior-lisp-program "clisp"))
+
+;; TODO add a bool value to switch to the sly buffer on save
+(defun my-lisp-load-on-save ()
+  "Enhanced save function for Lisp files. It checks for any active SLY buffer, starts SLY if necessary, then loads the file only if SLY was started by this function."
+  (add-hook 'after-save-hook
+            (lambda ()
+              (let ((source-buffer (current-buffer))
+                    (sly-buffer-prefix "*sly-mrepl for clisp*")
+                    (sly-started nil))
+                ;; Check if any SLY buffer exists and start SLY if none exists
+                (unless (seq-some (lambda (buffer)
+                                    (string-prefix-p sly-buffer-prefix (buffer-name buffer)))
+                                  (buffer-list))
+                  (sly)
+                  (setq sly-started t)) ; Mark that SLY was started by this action
+                ;; Wait briefly to ensure SLY has started if needed
+                (when sly-started
+                  (sleep-for 0.5)) ; Adjust timing if necessary
+                ;; If SLY was started by this function, switch back and load the file
+                (if sly-started
+                    (progn
+                      (switch-to-buffer-other-window source-buffer)
+                      (sly-load-file (buffer-file-name)))
+                  ;; Otherwise just load the file without switching windows
+                  (sly-load-file (buffer-file-name))))) ; Load the current file into Lisp
+            nil 'local))
+
+
+(add-hook 'lisp-mode-hook 'my-lisp-load-on-save)
+
+
+;; SCHEME
+(setq scheme-program-name "guile")
+
+(use-package geiser
+  :ensure t)
+
+(use-package geiser-guile
+  :ensure t)
+
+
+;; TREE SITTER
+;; TODO it print alot of garbage
+;; (use-package tree-sitter
+;;   :ensure t)
+
+;; (use-package tree-sitter-langs
+;;   :ensure t)
+
+
+
+(use-package haskell-mode
+  :ensure t
+  :config
+  (setq haskell-process-show-debug-tips nil))
+
+(defun my-haskell-load-on-save ()
+  "When saving, load the current Haskell file interactively."
+  (add-hook 'after-save-hook
+            (lambda ()
+              (call-interactively 'haskell-process-load-file))
+            nil 'local))
+
+(add-hook 'haskell-mode-hook 'my-haskell-load-on-save)
+
+(defun setup-haskell-interactive-keys ()
+  "Set up custom keybindings for the Haskell interactive mode."
+  (local-set-key (kbd "<up>") 'haskell-interactive-mode-history-previous)
+  (local-set-key (kbd "<down>") 'haskell-interactive-mode-history-next)
+  (local-set-key (kbd "C-l") 'haskell-interactive-mode-clear))
+
+(add-hook 'haskell-interactive-mode-hook 'setup-haskell-interactive-keys)
+
+
+
+
+
+
+
+;; OCAML
+(use-package tuareg
+  :ensure t)
+
+(use-package dune
+  :ensure t)
+
+;; TODO those 2 dont compile on arch
+;; (use-package utop
+;;   :ensure t)
+
+;; (use-package merlin
+;;   :ensure t)
+
+
+
+
+;; JSON
+
+(use-package json-mode
+  :ensure t)
+
+
+
 ;; ELISP
 (defun laluxx/setup-emacs-lisp-keys ()
   "Setup keybindings for `emacs-lisp-mode' and related modes."
   (define-key emacs-lisp-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config)
   (define-key lisp-interaction-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config))
+
 
 (add-hook 'emacs-lisp-mode-hook 'laluxx/setup-emacs-lisp-keys)
 (add-hook 'lisp-interaction-mode-hook 'laluxx/setup-emacs-lisp-keys)
@@ -809,18 +1338,27 @@
               tab-width 4
               indent-tabs-mode nil)
 
+;; (add-to-list 'auto-mode-alist '("\\.vert\\'" . c-mode))
+;; (add-to-list 'auto-mode-alist '("\\.frag\\'" . c-mode))
+
+(use-package glsl-mode
+  :ensure t)
+
+
+
 
 
 ;; TODO enabled lang packages when a .lua file is opened 
 ;; LUA
-(use-package lua-mode
-  :ensure t)
+;; (use-package lua-mode
+;;   :ensure t)
 
 ;; ZIG
-(use-package zig-mode
-  :ensure t)
+;; (use-package zig-mode
+;;   :ensure t)
 
-;; TODO make modules
+;; (use-package lsp-haskell
+;;   :ensure t)
 
 (use-package lsp-mode
   :ensure t
@@ -831,13 +1369,16 @@
   (setq lsp-headerline-breadcrumb-enable nil))
 
 (use-package lsp-ui
-  :ensure t)
+  :ensure t
+  :config
+  (define-key lsp-ui-mode-map [remap xref-find-definitions] #'lsp-ui-peek-find-definitions)
+  (define-key lsp-ui-mode-map [remap xref-find-references] #'lsp-ui-peek-find-references))
 
 (use-package consult-lsp
   :ensure t)
 
-(use-package indent-bars
-  :load-path "~/.config/emacs/lisp/indent-bars")
+;; (use-package indent-bars
+;;   :load-path "~/.config/emacs/lisp/indent-bars")
 
 
 ;;;; ORG MODE
@@ -851,6 +1392,22 @@
   :hook (org-mode . org-bars-mode))
 
 
+;; NOTE This require a shit ton of python dependencies
+;; Install them all or it will not work.
+;; (use-package eaf
+;;   :load-path "~/.config/emacs/lisp/emacs-application-framework"
+;;   :custom
+;;   ; See https://github.com/emacs-eaf/emacs-application-framework/wiki/Customization
+;;   (eaf-browser-continue-where-left-off t)
+;;   (eaf-browser-enable-adblocker t)
+;;   (browse-url-browser-function 'eaf-open-browser)
+;;   :config
+;;   (require 'eaf-browser)
+;;   ;; (require 'eaf-pdf-viewer)
+;;   (require 'eaf-image-viewer)
+;;   (defalias 'browse-web #'eaf-open-browser))
+
+
 (use-package flycheck
   :ensure t)
 
@@ -858,8 +1415,17 @@
   :ensure t)
 
 
-(global-set-key (kbd "C-c C-g") 'evil-goto-definition)
-(global-set-key (kbd "C-x C-c") 'compile)
+(global-set-key (kbd "C-c C-g") 'xref-find-definitions)
+(global-set-key (kbd "C-x C-c") 'quick-calc)
+
+
+(use-package shut-up
+  :ensure t)
+
+(use-package suggest
+  :ensure t)
+
+
 
 ;; RUST
 (use-package rustic
@@ -871,41 +1437,45 @@
 
 
 ;;;; DIRED
-;; TODO 'y' to copy or duplicate a file
-
 (setq dired-listing-switches
       "-l --almost-all --human-readable --time-style=long-iso --group-directories-first --no-group")
 
-(use-package dirvish
-  :ensure t
-  :config
-  (global-set-key (kbd "C-x C-j") 'dirvish-dwim)
-  (global-set-key (kbd "C-c C-h") 'dirvish-side)
-  (setq dirvish-attributes '(nerd-icons file-size collapse subtree-state)) ;; vc-state  git-msg file-time
-  (setq dired-omit-files "^\\...+$")  ; This regex matches both '.' and '..'
-  (add-hook 'dired-mode-hook #'dired-omit-mode)
-  (dirvish-override-dired-mode))
+;; (use-package dirvish
+;;   :ensure t
+;;   :config
+;;   (global-set-key (kbd "C-x C-j") 'dirvish-dwim)
+;;   (global-set-key (kbd "C-c C-h") 'dirvish-side)
+;;   (setq dirvish-attributes '(nerd-icons file-size collapse subtree-state)) ;; vc-state  git-msg file-time
+;;   (setq dired-omit-files "^\\...+$")  ; This regex matches both '.' and '..'
+;;   (setq dirvish-use-mode-line nil
+;;         dirvish-use-header-line nil)
+;;   (setq dirvish-path-separators (list "  " "  " "  "))
+;;   (add-hook 'dired-mode-hook #'dired-omit-mode)
+;;   (dirvish-override-dired-mode))
 
-(setq dirvish-use-mode-line nil
-      dirvish-use-header-line nil)
-(setq dirvish-path-separators (list "  " "  " "  "))
+;; TODO This is not the correct hook
+(defun enable-diredfl-for-dirvish-preview ()
+  "Enable `diredfl-mode` in Dirvish preview buffers."
+  (when (string-match-p "\\*Dirvish-preview-.*\\*" (buffer-name))
+    (diredfl-mode 1)))
+
+(add-hook 'after-change-major-mode-hook 'enable-diredfl-for-dirvish-preview)
 
 (use-package diredfl
   :ensure t
   :config
-  (diredfl-global-mode))
-
-
-
-
+  (diredfl-global-mode) ; enable this only if you dont use dirvish
+  )
 
 ;; NOTE Use this only if you don't use dirvish
-;; (use-package nerd-icons-dired
-;;   :ensure t
-;;   :diminish
-;;   :custom-face
-;;   (nerd-icons-dired-dir-face ((t (:inherit nerd-icons-dsilver :foreground unspecified))))
-;;   :hook (dired-mode . nerd-icons-dired-mode))
+(use-package nerd-icons-dired
+  :ensure t
+  :diminish
+  :custom-face
+  (nerd-icons-dired-dir-face ((t (:inherit nerd-icons-dsilver :foreground unspecified))))
+  :hook (dired-mode . nerd-icons-dired-mode))
+
+
 
 (defvar auto-create-directory-enabled t
   "When non-nil, Emacs will automatically create non-existing directories when opening files.")
@@ -940,6 +1510,10 @@
     (message "Copied %s" filename)))
 
 
+
+(use-package wdired
+  :ensure t)
+
 (defun my-dired-mode-setup ()
   "Custom keybindings and settings for `dired-mode`."
   (define-key dired-mode-map (kbd "b") 'dired-up-directory)
@@ -950,38 +1524,39 @@
   (define-key dired-mode-map (kbd "C-s") 'find-file)
   (define-key dired-mode-map (kbd "TAB") 'dirvish-subtree-toggle)
   (define-key dired-mode-map (kbd "y") 'dired-copy-file-contents-to-clipboard)
-
-  ;; (auto-revert-mode 1)
+  (define-key dired-mode-map (kbd "o") 'dired-maybe-insert-subdir)
+  (define-key dired-mode-map (kbd "i") 'wdired-change-to-wdired-mode)
+  (define-key dired-mode-map (kbd "F") 'find-file)
+  (auto-revert-mode 1)
   )
 
 (add-hook 'dired-mode-hook 'my-dired-mode-setup)
 
 
-
-
 ;;;; ISEARCH
-;; TODO while typing wrapping
-(defun isearch-repeat-forward+ ()
-  (interactive)
-  (unless isearch-forward
-    (goto-char isearch-other-end))
-  (isearch-repeat-forward)
-  (unless isearch-success
-    (isearch-repeat-forward)))
+;; TODO while typing buffer wrapping
+;; (defun isearch-repeat-forward+ ()
+;;   (interactive)
+;;   (unless isearch-forward
+;;     (goto-char isearch-other-end))
+;;   (isearch-repeat-forward)
+;;   (unless isearch-success
+;;     (isearch-repeat-forward)))
 
-(defun isearch-repeat-backward+ ()
-  (interactive)
-  (when (and isearch-forward isearch-other-end)
-    (goto-char isearch-other-end))
-  (isearch-repeat-backward)
-  (unless isearch-success
-    (isearch-repeat-backward)))
+;; (defun isearch-repeat-backward+ ()
+;;   (interactive)
+;;   (when (and isearch-forward isearch-other-end)
+;;     (goto-char isearch-other-end))
+;;   (isearch-repeat-backward)
+;;   (unless isearch-success
+;;     (isearch-repeat-backward)))
 
-;; (define-key isearch-mode-map (kbd "C-s") 'isearch-repeat-forward+)
+;; (define-key isearch-mode-map (kbd "C-S") 'isearch-repeat-forward+)
 ;; (define-key isearch-mode-map (kbd "C-r") 'isearch-repeat-backward+)
 
 (global-set-key (kbd "C-r") 'isearch-forward)
 (global-set-key (kbd "C-s") 'consult-line)
+
 
 
 ;;;; EDITING
@@ -992,14 +1567,43 @@
 (save-place-mode t)
 
 
+(defun laluxx/copy-buffer ()
+  "Copy the entire buffer to the kill ring."
+  (interactive)
+  (kill-new (buffer-string)))
+
+(global-set-key (kbd "C-c C-b") 'laluxx/copy-buffer)
+
 (use-package evil
   :ensure t)
 
+(use-package page-break-lines
+  :ensure t
+  :config
+  (global-page-break-lines-mode))
+
+
+;; TODO stop blink and line cursor
+(use-package multiple-cursors
+  :ensure t
+  :config
+  (global-set-key (kbd "C-S-c C-S-c") 'mc/edit-lines)
+  (global-set-key (kbd "M-S-<down>") 'mc/mark-next-like-this)
+  (global-set-key (kbd "M-S-<up>") 'mc/mark-previous-like-this)
+  )
+
+
 (use-package drag-stuff
-  :ensure t)
+  :ensure t
+  :bind (("M-<left>" . drag-stuff-left)
+         ("M-<right>" . drag-stuff-right)
+         ("M-<up>" . drag-stuff-up)
+         ("M-<down>" . drag-stuff-down)))
+
 
 ;; (use-package goto-last-change
 ;;   :ensure t)
+
 
 (defun laluxx/move-to-beginning-if-shorter-than-column (original-func &rest args)
   "Move cursor to the beginning of the line if the new line after executing ORIGINAL-FUNC is shorter than the current column position."
@@ -1024,14 +1628,12 @@
 			      (next-line)))
 
 
-(defvar copied-line nil "Flag to indicate if a line has been copied.")
-
-
 
 (defun laluxx/mwim-beginning ()
   "Move point to the first non-whitespace character on this line.
-If the point is already there, move to the beginning of the line."
-  (interactive)
+If the point is already there, move to the beginning of the line.
+Extend the selection if shift is held."
+  (interactive "^")
   (let ((origin (point)))
     (back-to-indentation)
     (when (= origin (point))
@@ -1039,18 +1641,59 @@ If the point is already there, move to the beginning of the line."
 
 (defun laluxx/mwim-end ()
   "Move point to the end of the text on this line.
-If the point is already there, move to the end of the line."
-  (interactive)
+If the point is already there, move to the end of the line.
+Extend the selection if shift is held."
+  (interactive "^")
   (let ((origin (point)))
     (end-of-line-text)
     (when (= origin (point))
       (move-end-of-line 1))))
+
+
+;; TODO
+(defun laluxx/backward-kills-word ()
+  "Kills the previous segment of a camelCase word or a whole word if not camelCase."
+  (interactive)
+  (let ((case-fold-search nil)  ; Ensure case sensitivity
+        (start (point)))
+    (if (and (looking-back "[A-Z][a-z]+" nil)  ; If there's a lowercase following uppercase
+             (looking-back "\\([A-Z][a-z]+\\)[A-Z]" nil)) ; And it's part of a camelCase
+        (progn
+          (backward-char 1)
+          (if (looking-back "[A-Z][a-z]+" nil)
+              (kill-region (match-beginning 0) start)  ; Kill to the beginning of the segment
+            (backward-kill-word 1)))
+      (backward-kill-word 1))))  ; Fallback to killing a whole word
+
+(global-set-key (kbd "C-c C-k") 'laluxx/backward-kills-word)
+
+
+
+
+(defun laluxx/smart-eval-sexp ()
+  "Evaluate the s-expression based on the position of the point.
+If the point is on an opening or closing parenthesis, evaluate the enclosed s-expression.
+Otherwise, evaluate the last s-expression before the point."
+  (interactive)
+  (if (or (eq (char-after) ?\()
+          (eq (char-before) ?\)))
+      (progn
+        (save-excursion
+          (unless (eq (char-after) ?\()
+            (backward-up-list))
+          (eval-last-sexp nil)))
+    (eval-last-sexp nil)))
+
+(global-set-key (kbd "C-M-j") 'laluxx/smart-eval-sexp)
+
 
 (defun end-of-line-text ()
   "Move point to the last non-whitespace character on this line."
   (end-of-line)
   (skip-syntax-backward " " (line-beginning-position)))
 
+
+(defvar copied-line nil "Flag to indicate if a line has been copied.")
 
 (defun laluxx/copy-line ()
   "Copy the current line to the clipboard and set `copied-line` to t."
@@ -1061,20 +1704,32 @@ If the point is already there, move to the end of the line."
   (setq copied-line t)
   (message "Line copied!"))
 
+;; ;; TODO in some places it doesn't make any sense to indent like in 'Makefiles'
 (defun laluxx/yank-line ()
   "Yank the copied line to the next line if `copied-line` is true
- and the current line is not empty, otherwise perform a regular yank."
+   and the current line is not empty, otherwise perform a regular yank.
+   Then indent the yanked region."
   (interactive)
-  (if copied-line
-      (if (save-excursion
-	    (beginning-of-line)
-	    (/= (point) (line-end-position)))
-	  (progn
-	    (end-of-line)
-	    (newline)
-	    (yank))
-	(yank))
-    (yank)))
+  (let ((start (point)))  ; Remember the point position before yanking.
+    (if copied-line
+        (if (save-excursion
+              (beginning-of-line)
+              (/= (point) (line-end-position)))
+            (progn
+              (end-of-line)
+              (newline)
+              (yank)
+              (indent-region start (point)))  ; Indent the region after yanking.
+          (progn
+            (yank)
+            (indent-region start (point))))  ; Indent even if the line was empty.
+      (progn
+        (yank)
+        (indent-region start (point))))))  ; Always indent for a regular yank.
+
+
+
+
 
 
 (defun laluxx/kill-line-or-kill-region ()
@@ -1085,16 +1740,6 @@ If the point is already there, move to the end of the line."
     (kill-line)))
 
 
-(defun laluxx/insert-or-evaluate-region ()
-  "Insert the character 'e' if no active region, otherwise evaluate the region and then deactivate the region."
-  (interactive)
-  (if (use-region-p)
-      (progn
-	(call-interactively 'eval-region)
-	(keyboard-quit))  ; Deselect the region
-    (insert "e")))
-
-
 (defun laluxx/insert-or-comment-region ()
   "Insert the character 'c' if no active region, otherwise comment the region."
   (interactive)
@@ -1103,6 +1748,20 @@ If the point is already there, move to the end of the line."
     (insert "c")))
 
 (global-set-key (kbd "c") 'laluxx/insert-or-comment-region)
+
+
+;; COPY
+(defun laluxx/copy-append-region (start end)
+  "Append selected region to the clipboard contents."
+  (interactive "r")
+  (let ((selection (buffer-substring start end)))
+    (if (not (use-region-p))
+        (message "No region selected!")
+      (with-temp-buffer
+        (insert (if (gui-get-selection 'CLIPBOARD) (gui-get-selection 'CLIPBOARD) ""))
+        (insert selection)
+        (gui-set-selection 'CLIPBOARD (buffer-string)))
+      (message "Region appended to clipboard!"))))
 
 (defun laluxx/insert-or-copy-region ()
   "Insert the character 'y' if no active region, otherwise copy the region and reset `copied-line`."
@@ -1150,20 +1809,28 @@ If the point is already there, move to the end of the line."
   (backward-paragraph)
   (activate-mark))
 
+
+;; 4 seconds just to load iedit ?
 (use-package iedit
-  :ensure t)
+  :ensure t
+  :defer t
+  :config
+  (defun laluxx/iedit-forward-word()
+    "Activate iedit-mode and go to the end of the current word."
+    (interactive)
+    (iedit-mode)
+    (forward-word))
 
-(defun laluxx/iedit-forward-word()
-  "Activate iedit-mode and go to the end of the current word."
-  (interactive)
-  (iedit-mode)
-  (forward-word))
+  (defun laluxx/iedit-backward-word()
+    "Activate iedit-mode and go to the end of the current word."
+    (interactive)
+    (iedit-mode)
+    (backward-word))
 
-(defun laluxx/iedit-backward-word()
-  "Activate iedit-mode and go to the end of the current word."
-  (interactive)
-  (iedit-mode)
-  (backward-word))
+  (global-set-key (kbd "M-I") 'laluxx/iedit-backward-word)
+  (global-set-key (kbd "M-i") 'laluxx/iedit-forward-word)
+  )
+
 
 (defun laluxx/open-above ()
   "Open a new line above the current line and position the cursor at its beginning."
@@ -1181,11 +1848,171 @@ If the point is already there, move to the end of the line."
 
 ;;;; FUNCTIONS
 
+
+
+;; SELECTION
+;; TODO better mouse selection
+;; drag-down -> visual-line
+;; drag-in-line -> normal one
+
+(defun mark-line (&optional arg allow-extend)
+  "Set mark ARG lines away from point.
+The place mark goes is the same place \\[end-of-line] would
+move to with the same argument.
+Interactively, if this command is repeated
+or (in Transient Mark mode) if the mark is active,
+it marks the next ARG lines after the ones already marked."
+  (interactive "P\np")
+  (cond ((and allow-extend
+              (or (and (eq last-command this-command) (mark t))
+                  (region-active-p)))
+         (setq arg (if arg (prefix-numeric-value arg)
+                     (if (< (mark) (point)) -1 1)))
+         (set-mark
+          (save-excursion
+            (goto-char (mark))
+            (forward-line arg)
+            (point))))
+        (t
+         (push-mark
+          (save-excursion
+            (end-of-line (prefix-numeric-value arg))
+            (point))
+          nil t))))
+
+(defun laluxx/center-word-in-buffer (word)
+  "Center a word horizontally in the current buffer."
+  (interactive "sEnter word to center: ")
+  (let* ((win-width (window-width))
+         (padding (/ (- win-width (length word)) 2))
+         (padding-str (make-string (max 0 padding) ?\s)))
+    (save-excursion
+      (move-to-column padding t)
+      (insert word))))
+
+(defun laluxx/center-message (word)
+  "Center a word horizontally in the middle of the screen."
+  (interactive "sEnter word to center: ")
+  (let* ((win-width (window-width))
+         (padding (/ (- win-width (length word)) 2))
+         (padding-str (make-string (max 0 padding) ?\s)))
+    (message "%s%s" padding-str word)))
+
+
+
+
+
+(defun yay ()
+  "Search for an Arch package and install it using yay."
+  (interactive)
+  (let* ((packages (split-string (shell-command-to-string "yay -Ssq") "\n" t))
+         (package (completing-read "Install package: " packages nil t)))
+    (when (and package (not (string= package "")))
+      (async-shell-command (format "yay -S --noconfirm %s" package) "*yay-install-output*"))))
+
+
+
 ;; BUFFERS
 (defun laluxx/kill-current-buffer ()
   "Kill the current buffer without prompting."
   (interactive)
   (kill-buffer (current-buffer)))
+
+
+;; EVAL
+
+;; TODO copy that appends to the clipboard
+
+(defun laluxx/insert-or-evaluate-region ()
+  "Insert the character 'e' if no active region, otherwise evaluate the region and then deactivate the region."
+  (interactive)
+  (if (use-region-p)
+      (progn
+	    (call-interactively 'laluxx/smart-eval-region)
+	    (deactivate-mark))  ; Deselect the region correctly without signaling quit
+    (insert "e")))
+
+(defun laluxx/smart-eval-region (start end)
+  "Evaluate the region as if it wasn't commented.
+The region is from START to END."
+  (interactive "r")
+  (let ((content (buffer-substring start end)))
+    ;; Uncomment the content temporarily
+    (with-temp-buffer
+      (insert content)
+      (goto-char (point-min))
+      (while (comment-forward (point-max))
+        (uncomment-region (line-beginning-position) (line-end-position)))
+      ;; Evaluate the uncommented content
+      (eval-buffer)))
+  (message "DONE"))  ; Moved the message here to ensure it prints after evaluation
+
+
+
+
+;; TODO 'C-M-S-h' backward-mark-defun
+;; TODO one backward should do -1 a mark-defun
+;; (global-set-key (kbd "C-M-H") (lambda () (interactive) (mark-defun -1)))
+
+
+
+;; EDITING
+
+(defun mark-line (&optional arg allow-extend)
+  "Set mark ARG lines away from point.
+The place mark goes is the same place \\[end-of-line] would
+move to with the same argument.
+Interactively, if this command is repeated
+or (in Transient Mark mode) if the mark is active,
+it marks the next ARG lines after the ones already marked."
+  (interactive "P\np")
+  (cond ((and allow-extend
+              (or (and (eq last-command this-command) (mark t))
+                  (region-active-p)))
+         (setq arg (if arg (prefix-numeric-value arg)
+                     (if (< (mark) (point)) -1 1)))
+         (set-mark
+          (save-excursion
+            (goto-char (mark))
+            (forward-line arg)
+            (point))))
+        (t
+         (push-mark
+          (save-excursion
+            (end-of-line (prefix-numeric-value arg))
+            (point))
+          nil t))))
+
+(global-set-key (kbd "C-S-l") 'mark-line)
+
+(defun mark-word-and-move ()
+  "Mark the current word, activate the region, and move the cursor to the end of the selection."
+  (interactive)
+  (push-mark (point) t t)   ; Save the current position and activate the mark
+  (forward-word)            ; Move the point to the end of the word
+  (exchange-point-and-mark) ; Swap the positions of the point and mark
+  )
+
+(global-set-key (kbd "C-w") 'mark-word)
+
+
+
+(defun laluxx/insert-lambda ()
+  (interactive)
+  (insert "λ"))
+
+(global-set-key (kbd "C-c l") 'laluxx/insert-lambda)
+
+
+(defun laluxx/kill-strings-in-region (start end)
+  "Kill texts inside double quotes in the specified region."
+  (interactive "r")
+  (save-excursion
+    (goto-char start)
+    (while (re-search-forward "\"\\([^\"]*\\)\"" end t)
+      (replace-match "\"\"" nil nil))))
+
+(global-set-key (kbd "C-c s") 'laluxx/kill-strings-in-region)
 
 ;; C
 (defun laluxx/copy-project ()
@@ -1346,7 +2173,6 @@ If the point is already there, move to the end of the line."
       (select-window next)))))
 
 
-;; TODO in 'dired' open that file or directory in the new split when there is only one window
 (defun smart-split-down ()
   "Switch to the next window, or if only one window, split horizontally and focus below."
   (interactive)
@@ -1397,7 +2223,7 @@ If the point is already there, move to the end of the line."
 (global-set-key (kbd "M-h") 'smart-split-left)
 (global-set-key (kbd "M-l") 'smart-split-right)
 (global-set-key (kbd "M-J") 'swap-with-next-window)
-(global-set-key (kbd "M-K") 'swap-with-prev-window) ;; TODO if there is only one window do 'SOMETHING'
+(global-set-key (kbd "M-K") 'swap-with-prev-window)
 (global-set-key (kbd "M-q") 'smart-delete-window)
 
 
@@ -1448,6 +2274,30 @@ If the point is already there, move to the end of the line."
   (global-set-key (kbd "M-8") (lambda () (interactive) (eyebrowse-switch-to-window-config 8)))
   (global-set-key (kbd "M-9") (lambda () (interactive) (eyebrowse-switch-to-window-config 9)))
   (global-set-key (kbd "M-TAB") 'eyebrowse-last-window-config))
+
+
+;; MONOCLE
+
+(defvar laluxx/window-configuration nil
+  "Current window configuration.
+Intended for use by `laluxx/window-monocle'.")
+
+(define-minor-mode laluxx/window-single-toggle
+  "Toggle between multiple windows and single window.
+This is the equivalent of maximizing a window. Tiling window
+managers such as DWM, BSPWM refer to this state as 'monocle'."
+  :lighter " [M]"
+  :global nil
+  (if (one-window-p)
+      (when laluxx/window-configuration
+        (set-window-configuration laluxx/window-configuration))
+    (setq laluxx/window-configuration (current-window-configuration))
+    (delete-other-windows)))
+
+(global-set-key (kbd "M-SPC") 'laluxx/window-single-toggle)
+
+
+
 
 
 ;; EXWM TODO
@@ -1613,13 +2463,9 @@ If the point is already there, move to the end of the line."
 (define-key elisp-outline-mode-map (kbd "C-c C-u") 'outline-up-heading)
 
 
-(use-package spacious-padding
-  :ensure t
-  :config
-  (general-after-init(spacious-padding-mode)))
 
+;;;; EWW
 
-;;;; WEB BROWSING
 
 (defun my-eww-mode-setup ()
   "Set up EWW with custom settings."
@@ -1627,14 +2473,6 @@ If the point is already there, move to the end of the line."
   (olivetti-set-width 120))
 
 (add-hook 'eww-mode-hook 'my-eww-mode-setup)
-
-;; (use-package xwwp-follow-link
-;;   :load-path "~/.emacs.d/xwwp-follow-link"
-;;   :custom
-;;   (xwwp-follow-link-completion-system 'ivy)
-;;   :bind (:map xwidget-webkit-mode-map
-;;               ("v" . xwwp-follow-link)))
-
 
 
 ;;;; PROFILER
@@ -1652,7 +2490,23 @@ If the point is already there, move to the end of the line."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(indent-bars consult-lsp consult-flycheck flycheck lua-mode neotree treemacs elpher isearch-mb anzu auto-dim-other-buffers color-theme-sanityinc-tomorrow mindre-theme lamda-themes dired-plus dired+ dired-hacks dirvish-icons diminish power-mode consult-eglot org-bars affe jinx cape evil zig-mode goto-last-change nerd-icons-dired goggles solaire doom-modeline exwm magit rustic lsp-ui diredfl lsp-mode lsp drag-stuff ligatures rainbow-mode solaire-mode orderless ewal-doom-themes ztree which-key vertico theme-magic smartparens rainbow-delimiters olivetti moody marginalia kind-icon kaolin-themes iedit hl-todo hide-mode-line helpful general eyebrowse ewal eshell-z eshell-prompt-extras esh-help ef-themes doom-themes corfu consult all-the-icons-completion)))
+   '(all-the-icons-completion catppuccin-theme consult-flycheck
+                              consult-lsp corfu diminish diredfl
+                              doom-modeline drag-stuff dune ef-themes
+                              elfeed embark-consult esh-help
+                              eshell-prompt-extras eshell-z evil
+                              ewal-doom-themes eyebrowse geiser-guile
+                              general glsl-mode haskell-mode helpful
+                              hl-todo iedit iscroll json-mode
+                              kaolin-themes kind-icon ligature lsp-ui
+                              magit marginalia multiple-cursors
+                              nerd-icons-dired olivetti orderless
+                              page-break-lines popper
+                              rainbow-delimiters rainbow-mode rustic
+                              shut-up sly smooth-scrolling
+                              spacemacs-theme spacious-padding suggest
+                              theme-magic timu-caribbean-theme tuareg
+                              vertico which-key)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
