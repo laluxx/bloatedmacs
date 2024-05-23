@@ -5,9 +5,6 @@
 ;;             (profiler-stop)
 ;;             (profiler-report)))
 
-;; TODO customize the non focused modeline 
-;; TODO 'C-S-s'
-
 
 ;; MELPA
 (require 'package)
@@ -17,14 +14,32 @@
 ;;(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 (package-initialize)
 
-;; TODO 'C-backspace' should work with came case like ded
+(add-hook 'focus-out-hook (lambda () (message "Lost focus")))
 
-;; TODO 'popper' make popup take just enough space for the text to fit
+(use-package kaolin-themes
+  :ensure t
+  :config
+  (setq kaolin-themes-bold t       ; If nil, disable the bold style.        
+        kaolin-themes-italic t     ; If nil, disable the italic style.      
+        kaolin-themes-underline t) ; If nil, disable the underline style.
+  ;; (setq kaolin-themes-modeline-border nil)
+  (load-theme 'kaolin-dark t)
+  )
+
+;; TODO IMPORTANT rainbow-line-numbers-bg
+;; TODO IMPORTANT 'C-backspace' should work with came case like ded
+;; TODO customize the non focused modeline 
+;; TODO 'C-S-s'
+;; TODO c (comment) in region mode should save
+;; TODO in elisp mode 'M-n' and 'M-p' should navigate lists
+
+;; TODO mark-inside-page()
+;; TODO 'r' on selection should replace the selection
+
 ;; TODO 'C-S-n' and 'C-S-p' should behave like visual-line mode in vim and always go to the beginning of the line
 ;; TODO Remember the last mode the 'scratch-buffer' was is and load it at startup
 ;; TODO Remember the last theme used, and load it at startup also extract the 'bg' color for the 'early-ini.el'
 ;; TODO 'elisp-outline-mode' make it automatically collapse heading when entering, make ;;; heading work and make heading look good
-;; TODO 'C-h-e' should toggle
 
 
 (use-package elfeed
@@ -35,8 +50,8 @@
           "http://www.50ply.com/atom.xml"  ; no autotagging
           ("http://nedroid.com/feed/" webcomic))))
 
-
 ;;;; KEYBINDS
+(global-set-key (kbd "C-S-H") 'mark-defun)
 
 ;; LSP
 (global-set-key (kbd "C-S-K") 'lsp-ui-doc-show)
@@ -65,23 +80,26 @@
 (global-set-key (kbd "C-h F") 'describe-face)
 (global-set-key (kbd "C-h V") 'set-variable)
 
-(global-set-key (kbd "C-x C-S-j") 'dired-jump-other-window)
-(global-set-key (kbd "C-x c") 'compile)
-
+(global-set-key (kbd "C-t") #'transpose-words)
+(global-set-key (kbd "M-t") #'transpose-chars)
 (global-set-key (kbd "C-S-j") (lambda () (interactive) (join-line -1)))
 (global-set-key (kbd "C-S-d") 'kill-word)
 (global-set-key (kbd "C-e") 'laluxx/mwim-end)
 (global-set-key (kbd "C-a") 'laluxx/mwim-beginning)
 (global-set-key (kbd "C-S-y") 'laluxx/copy-line)
-(global-set-key (kbd "C-y") 'laluxx/yank-line)
+;; (global-set-key (kbd "C-y") 'laluxx/yank-line)
 (global-set-key (kbd "C-k") 'laluxx/kill-line-or-kill-region)
 (global-set-key (kbd "e") 'laluxx/insert-or-evaluate-region)
 (global-set-key (kbd "y") 'laluxx/insert-or-copy-region)
 (global-set-key (kbd "C-d") 'laluxx/delete-char-or-kill-region)
 (global-set-key (kbd "M-n") 'laluxx/drag-down-or-forward-paragraph)
 (global-set-key (kbd "M-p") 'laluxx/drag-up-or-backward-paragraph)
-(global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
-(global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
+;; (global-set-key (kbd "M-N") 'laluxx/forward-paragraph-select)
+;; (global-set-key (kbd "M-P") 'laluxx/backward-paragraph-select)
+
+(global-set-key (kbd "M-N") 'mc/mark-next-like-this)
+(global-set-key (kbd "M-P") 'mc/mark-previous-like-this)
+
 (global-set-key (kbd "M-H") 'mark-paragraph)
 (global-set-key (kbd "M-O") 'laluxx/open-above)
 (global-set-key (kbd "M-o") 'laluxx/open-below)
@@ -118,6 +136,7 @@
   (general-define-key
    :keymaps 'Quit
    "r" 'restart-emacs
+   "R" 'laluxx/recompile-emacs
    "q" 'save-buffers-kill-terminal)
 
   (general-define-key
@@ -145,7 +164,8 @@
    "e" 'consult-flycheck
    "t" 'laluxx/find-todo
    "n" 'laluxx/find-note
-   "p" 'laluxx/find-package-source-code
+   "P" 'laluxx/find-package-source-code
+   "p" 'project-switch-project
    "m" 'consult-man
    "i" 'consult-find
    "g" 'find-grep
@@ -167,23 +187,109 @@ if not aborted,open it in a new window split vertically."
       (find-file file))))
 
 
+;;;; UNDO
+
+(use-package vundo
+  :ensure t
+  :config
+  (setq vundo-glyph-alist vundo-unicode-symbols)
+  (global-set-key (kbd "C-c u") #'vundo))
+
+
 ;;;; GIT
+
+;; (use-package pretty-magit
+;;   :load-path "~/.config/emacs/lisp/pretty-magit")
+
+
+
 (use-package magit
   :ensure t
-  :commands magit-status
-  :config
-  (global-set-key (kbd "C-h g") #'magit-status))
+  :commands magit-status)
 
+(global-set-key (kbd "C-h g") #'magit-status)
+(global-set-key (kbd "C-h C-c") #'magit-log-all)
+
+(defun laluxx/magit-bury-and-log-all ()
+  "Bury the current Magit buffer and open Magit log all."
+  (interactive)
+  (magit-mode-bury-buffer)
+  (magit-log-all))
+
+(with-eval-after-load 'magit
+  (define-key magit-revision-mode-map (kbd "q") 'laluxx/magit-bury-and-log-all))
+
+
+;; TODO is not consistent
+(defun laluxx/goto-first-hunk ()
+  "Go to the first diff hunk ('@@') in magit-revision-mode, if present. Otherwise, go to the beginning of the buffer."
+  (when (derived-mode-p 'magit-revision-mode)
+    (goto-char (point-min))  ; Start at the beginning of the buffer.
+    (unless (re-search-forward "^@@.*@@" nil t)  ; Search for the first diff hunk marker.
+      (goto-char (point-min)))))  ; If not found, ensure the cursor is at the start of the buffer.
+
+(add-hook 'magit-revision-mode-hook (lambda ()
+                                      (laluxx/goto-first-hunk)))
 
 ;;;; COMPILATION
+
+(require 'compile)
+
 (setq compilation-scroll-output t)
 (setq compilation-always-kill t)
+(global-set-key (kbd "C-x c") 'laluxx/save-and-compile)
+
+(define-key compilation-mode-map (kbd "j") 'recompile)
+(define-key compilation-mode-map (kbd "k") 'quit-window)
+
+(defun laluxx/save-and-compile ()
+  "Save the current buffer and then compile without asking."
+  (interactive)
+  (save-buffer)  ; Save the current buffer
+  (compile compile-command))
+
+(defun laluxx/save-and-set-compile ()
+  "Save the current buffer, prompt for compile command, and then compile."
+  (interactive)
+  (save-buffer)  ; Save the current buffer
+  ;; Ask for the compile command
+  (setq compile-command (read-string "Compile command: " compile-command))
+  ;; Compile with the new command
+  (compile compile-command))
+
+;; Bind the new function to C-x C-c
+(global-set-key (kbd "C-x C-c") 'laluxx/save-and-set-compile)
+
+(defun laluxx/update-compilation-header ()
+  "Update the header line with the number of errors, warnings, and successes in the compilation buffer."
+  (when (derived-mode-p 'compilation-mode)  ; Ensure it's a compilation buffer
+    (save-excursion
+      (goto-char (point-min))
+      (let ((errors (count-matches "^[^ \n].*[0-9]+:\\([0-9]+:\\)? error:"))
+            (warnings (count-matches "^[^ \n].*[0-9]+:\\([0-9]+:\\)? warning:"))
+            (successes (count-matches "build successful")))  ; Customize the success message pattern as needed
+        (setq header-line-format
+              (concat
+               (propertize (format "Errors: %d" errors) 'face 'compilation-error) ", "
+               (propertize (format "Warnings: %d" warnings) 'face 'compilation-warning) ", "
+               (propertize (format "Info: %d" successes) 'face 'compilation-info)))))))  ; Define or customize 'compilation-info' face as needed
+
+(defun laluxx/enable-header-in-compilation ()
+  "Enable custom header line in compilation mode."
+  (setq header-line-format nil)  ; Clear any existing header line format
+  (laluxx/update-compilation-header))
+
+(add-hook 'compilation-mode-hook 'laluxx/enable-header-in-compilation)
+(add-hook 'compilation-filter-hook 'laluxx/update-compilation-header)
+
+
+
 
 
 
 ;;;; IELM
 (setq ielm-header "")
-(setq ielm-prompt "λ🢒 ")
+(setq ielm-prompt "λ")
 
 (add-hook 'ielm-mode-hook (lambda ()
                             (define-key ielm-map (kbd "C-l")
@@ -225,9 +331,275 @@ if not aborted,open it in a new window split vertically."
 
 ;;;; UI
 
-;; POINTER
+;;; HYDRA
 
+;; (use-package posframe
+;;   :ensure t)
+
+;; (use-package hydra
+;;   :ensure t)
+
+;; ;; TODO hunk movement
+;; (use-package hydra-posframe
+;;   :load-path "~/.config/emacs/lisp/hydra-posframe")
+
+
+;; (use-package major-mode-hydra
+;;   :ensure t
+;;   :bind ("M-SPC" . major-mode-hydra))
+
+
+;; ;; TODO
+;; (use-package emacs-lisp-mode
+;;   :ensure nil
+;;   :mode-hydra
+;;   (emacs-lisp-mode
+;;    (:title "Emacs Lisp" :color teal :quit-key "q")
+;;    ("Eval"
+;;     (("b" eval-buffer "Buffer")
+;;      ("e" eval-defun "Defun")
+;;      ("r" eval-region "Region"))
+;;     "REPL"
+;;     (("I" ielm "IELM"))
+;;     "Test"
+;;     (("t" ert "Prompt")
+;;      ("T" (ert t) "All")
+;;      ("F" (ert :failed) "Failed"))
+;;     "Doc"
+;;     (("d" describe-function "Function")
+;;      ("v" describe-variable "Variable")
+;;      ("i" info-lookup-symbol "Info lookup")))))
+
+
+
+;;; DASHBOARD
+
+;; (defun my-dashboard-setup ()
+;;   "Setup the initial dashboard with custom settings at startup."
+;;   (interactive)
+;;   ;; Split the window below, setting the top window to contain 18 lines in total.
+;;   (split-window-below 18)
+;;   ;; Create and configure the buffer for the top window.
+;;   (let ((top-buffer (get-buffer-create "*top-info*")))
+;;     (with-current-buffer top-buffer
+;;       (erase-buffer)
+;;       (setq-local mode-line-format nil)  ; Hide the mode line
+
+;;       ;; Fill the buffer with 17 lines of content or placeholder text
+;;       (dotimes (n 17)
+;;         (insert (format "This is line %d\n" (1+ n))))
+
+;;       ;; Add a full-width colored line at the bottom
+;;       (goto-char (point-max))
+;;       (let ((line-start (point)))
+;;         (insert (make-string (window-width) ?\s))
+;;         ;; Retrieve the background color of 'diff-refine-changed' face
+;;         (let ((bg-color (face-attribute 'diff-refine-changed :background)))
+;;           (overlay-put (make-overlay line-start (point)) 'face `(:background ,bg-color)))))
+
+;;     (switch-to-buffer top-buffer))
+;;   ;; Create a new buffer for the bottom window and set its background.
+;;   (let ((bottom-buffer (get-buffer-create "*dashboard*")))
+;;     (with-selected-window (next-window)
+;;       (switch-to-buffer bottom-buffer)
+;;       (erase-buffer)
+;;       (insert "Welcome to Emacs! This is the the NOTES from the last project you were working on.
+;; This modeline will completely chage in form and functionality depending on the last thing you were doing when exiting emacs\n")
+;;       (setq-local face-remapping-alist
+;;                   '((default :background "#222225" :foreground "#c8c8d0")))
+;;       (setq-local mode-line-format nil)))  ; Hide the mode line in the bottom window
+;;   )
+
+;; (add-hook 'after-init-hook 'my-dashboard-setup)
+
+
+
+
+
+
+
+
+
+
+(defun toggle-modeline ()
+  "Toggle the visibility of the modeline in the current buffer."
+  (interactive)
+  (setq mode-line-format
+        (if mode-line-format
+            nil
+          (default-value 'mode-line-format)))
+  (force-mode-line-update))
+
+;; TODO 
+(defgroup colorful-line-numbers nil
+  "Customization group for the `colorful-line-numbers-mode'."
+  :group 'faces)
+
+(defcustom colorful-line-numbers-background-color "#161619"
+  "Background color for line numbers when `colorful-line-numbers-mode' is active."
+  :type 'color
+  :group 'colorful-line-numbers)
+
+(defcustom colorful-line-numbers-current-line-background-color "#161619"
+  "Background color for the current line number when `colorful-line-numbers-mode' is active."
+  :type 'color
+  :group 'colorful-line-numbers)
+
+(define-minor-mode colorful-line-numbers-mode
+  "Toggle custom background colors for line numbers in `display-line-numbers-mode'."
+  :lighter " ClrLnNum"
+  :global true
+  (if colorful-line-numbers-mode
+      (progn
+        ;; Enable coloring with customizable colors
+        (set-face-background 'line-number colorful-line-numbers-background-color)
+        (set-face-background 'line-number-current-line colorful-line-numbers-current-line-background-color))
+    ;; Revert to default when the mode is turned off
+    (set-face-background 'line-number nil)
+    (set-face-background 'line-number-current-line nil)))
+
+
+;; (require 'cl)
+
+;; (defun gradient (start end start-color end-color)
+;;   (interactive)
+;;   (destructuring-bind (red green blue) start-color
+;;                       (destructuring-bind (ered egreen eblue) end-color
+;;                                           (let* ((count     (coerce (- end    start) 'float))
+;;                                                  (ired   (/ (- ered   red)   count))
+;;                                                  (igreen (/ (- egreen green) count))
+;;                                                  (iblue  (/ (- eblue  blue)  count)))
+;;                                             (while (< 0 count)
+;;                                               (add-text-properties start (incf start)
+;;                                                                    `(face (:foreground ,(format "#%02x%02x%02x"
+;;                                                                                                 red green blue))))
+;;                                               (incf red   ired)
+;;                                               (incf green igreen)
+;;                                               (incf blue  iblue)
+;;                                               (decf       count))))))
+
+
+;; (defun rgb (name)
+;;   (let ((entry (assoc name color-name-rgb-alist)))
+;;     (if entry
+;;         (mapcar (lambda (x) (/ x 256.0)) (rest entry))
+;;       '(0 0 0))))
+
+;; (defun rainbow (start end)
+;;   (interactive "r")
+;;   (let ((range (truncate (- end start) 5)))
+;;     (loop
+;;      for (from to) on (list (rgb "red")
+;;                             (rgb "orange")
+;;                             (rgb "yellow")
+;;                             (rgb "green")
+;;                             (rgb "blue")
+;;                             (rgb "violet"))
+;;      while to
+;;      for start from start           by range
+;;      for next  from (+ start range) by range
+;;      do (gradient start (if to next end) from to))))
+
+;; (progn (font-lock-mode -1)
+;;        (rainbow (point-min) (point-max)))
+
+
+(use-package compiler-explorer
+  :ensure t
+  :config)
+
+
+;; ;; Use the calculated color in custom-set-faces
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(fringe ((t :background "#212121")))
+;;  '(header-line ((t :box (:line-width 4 :color "grey20" :style nil))))
+;;  '(header-line-highlight ((t :box (:color "#C5C8C6"))))
+;;  '(keycast-key ((t)))
+;;  '(line-number ((t :background "#212121")))
+;;  '(mode-line ((t :box (:line-width 6 :color "grey75" :style nil))))
+;;  '(mode-line-active ((t :box (:line-width 6 :color "grey75" :style nil))))
+;;  '(mode-line-highlight ((t :box (:color "#C5C8C6"))))
+;;  '(mode-line-inactive ((t :box (:line-width 6 :color "grey30" :style nil))))
+;;  '(tab-bar-tab ((t :box (:line-width 4 :color "grey85" :style nil))))
+;;  '(tab-bar-tab-inactive ((t :box (:line-width 4 :color "grey75" :style nil))))
+;;  '(tab-line-tab ((t)))
+;;  '(tab-line-tab-active ((t)))
+;;  '(tab-line-tab-inactive ((t)))
+;;  '(vertical-border ((t :background "#212121" :foreground "#212121")))
+;;  '(window-divider ((t (:background "#212121" :foreground "#212121"))))
+;;  '(window-divider-first-pixel ((t (:background "#212121" :foreground "#212121"))))
+;;  '(window-divider-last-pixel ((t (:background "#212121" :foreground "#212121")))))
+
+
+
+
+;; TODO the highlighter section should always be selected
+
+(use-package centered-cursor-mode
+  :ensure t)
+
+(use-package focus
+  :ensure t
+  :bind ("C-h C-z" . focus-mode-toggle)
+  :config
+  (defun focus-mode-toggle ()
+    "Toggle focus mode and centered-cursor-mode together."
+    (interactive)
+    (if focus-mode
+        (progn
+          (focus-mode -1)
+          (centered-cursor-mode -1)
+          (setq scroll-margin 0))
+      (progn
+        (focus-mode 1)
+        (centered-cursor-mode 1)
+        (setq scroll-margin 10)))))
+
+
+
+;; FRINGE
+
+;; TODO 'C-c-C-n' and 'C-c-cp' should color the current hunk in the buffer.
+;; TODO C-S-<any-number> should call quick-cals and insert that number
+
+(use-package diff-hl
+  :ensure t
+  :config
+  (setq diff-hl-side 'right)
+  (setq diff-hl-draw-borders 'nil)
+
+  ;; Define a function to enable diff-hl if .git directory exists in the project root
+  (defun my-enable-diff-hl-if-git-root ()
+    (when (locate-dominating-file default-directory ".git")
+      (diff-hl-mode 1)))
+
+  ;; Add the function to prog-mode-hook
+  (add-hook 'prog-mode-hook 'my-enable-diff-hl-if-git-root))
+
+(defun my-diff-hl-next-hunk ()
+  (interactive)
+  (setq diff-hl-side 'left)  ; Set diff-hl-side to 'left
+  (diff-hl-next-hunk))
+
+(defun my-diff-hl-previous-hunk ()
+  (interactive)
+  (setq diff-hl-side 'left)  ; Set diff-hl-side to 'left
+  (diff-hl-previous-hunk))
+
+(global-set-key (kbd "C-c C-p") 'my-diff-hl-previous-hunk)
+(global-set-key (kbd "C-c C-n") 'my-diff-hl-next-hunk)
+
+
+
+;; CURSOR
+
+;; TODO change cursor color when selecting to the background of the region 
 ;; TODO background and selection
+
 (defun laluxx/pointer-color-update ()
   "Update the cursor color based on the foreground color of the character at point."
   (let* ((pos (point))
@@ -235,37 +607,17 @@ if not aborted,open it in a new window split vertically."
          (face (or (car (face-at-point nil t))  ; Get face from overlays/text properties.
                    'default))  ; Fallback to default if no face is found.
          (fg-color (face-attribute face :foreground nil t))
-         ;; Fallback cursor color if fg is unspecified or face attribute fails.
+         ;; Use the real cursor color of the theme, or the foreground of `font-lock-comment-face` as fallback.
+         (theme-cursor-color (frame-parameter nil 'cursor-color))
+         (fallback-color (face-attribute 'font-lock-comment-face :foreground))
          (cursor-color (if (or (not fg-color) (string= fg-color "unspecified"))
-                           "red"
+                           (or theme-cursor-color fallback-color)
                          fg-color)))
     ;; Set the cursor color if it differs from the current one to minimize updates.
     (unless (equal cursor-color (frame-parameter nil 'cursor-color))
       (set-cursor-color cursor-color))))
 
 (add-hook 'post-command-hook 'laluxx/pointer-color-update)
-
-
-;; IMPROVE
-;; (defun my/cursor-color-update ()
-;;   "Update the cursor color based on the foreground color of the character at point or the region background color."
-;;   (let* ((pos (point))
-;;          ;; Attempt to find the face using overlays first, then text properties.
-;;          (face (or (car (face-at-point nil t))  ; Get face from overlays/text properties.
-;;                    'default))  ; Fallback to default if no face is found.
-;;          (fg-color (face-attribute face :foreground nil t))
-;;          ;; Use the background color of the 'region' face as the fallback color.
-;;          (region-bg-color (face-attribute 'region :background nil t))
-;;          ;; Determine cursor color, fallback to region background color if fg is unspecified.
-;;          (cursor-color (if (or (not fg-color) (string= fg-color "unspecified"))
-;;                            region-bg-color
-;;                          fg-color)))
-;;     ;; Set the cursor color if it differs from the current one to minimize updates.
-;;     (unless (equal cursor-color (frame-parameter nil 'cursor-color))
-;;       (set-cursor-color cursor-color))))
-
-;; (add-hook 'post-command-hook 'my/cursor-color-update)
-
 
 
 (defun set-minibuffer-cursor-style ()
@@ -287,13 +639,11 @@ if not aborted,open it in a new window split vertically."
 
 
 
-
 (use-package diminish
   :ensure t)
 
 (use-package iscroll
   :ensure t)
-
 
 (use-package olivetti
   :ensure t
@@ -307,7 +657,8 @@ if not aborted,open it in a new window split vertically."
 (defun my-info-mode-setup ()
   "Set up my preferences for Info mode."
   (olivetti-mode 1)
-  (olivetti-set-width 82))
+  (olivetti-set-width 82)
+  (text-scale-set 1))
 
 (add-hook 'Info-mode-hook 'my-info-mode-setup)
 
@@ -357,7 +708,11 @@ if not aborted,open it in a new window split vertically."
 (setq mouse-wheel-progressive-speed nil) ;; don"t accelerate scrolling
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
-
+(setq scroll-step 1
+      scroll-margin 0
+      scroll-conservatively 10
+      auto-window-vscroll nil
+      scroll-preserve-screen-position t)
 
 ;; TODO Do this only in a buffer alist '(eww)
 ;; (setq jit-lock-defer-time 0)
@@ -368,38 +723,36 @@ if not aborted,open it in a new window split vertically."
 ;; (setq mouse-wheel-progressive-speed nil) ; Progressive speed is too fast for me.
 
 
-
-(setq scroll-step 1
-      scroll-margin 0
-      scroll-conservatively 100000
-      auto-window-vscroll nil
-      scroll-preserve-screen-position t)
-
 (setq-default bidi-display-reordering 'left-to-right)
 (setq-default bidi-paragraph-direction 'left-to-right)
 (setq bidi-inhibit-bpa t)
 
 
 ;; LINE NUMBERS
-(defvar laluxx/line-number-threshold 50
-  "Minimum number of lines in a buffer to enable line numbers.")
 
-(defun my-enable-line-numbers-based-on-size ()
-  "Enable `display-line-numbers-mode' only if the buffer has more than `laluxx/line-number-threshold' lines."
-  (when (> (count-lines (point-min) (point-max)) laluxx/line-number-threshold)
-    (display-line-numbers-mode 1)))
+(defvar my/line-threshold 50
+  "Threshold number of lines for enabling line numbers and adjusting text scale.")
 
-;; Add the function to prog-mode-hook
-(add-hook 'prog-mode-hook 'my-enable-line-numbers-based-on-size)
+(defun my-adjust-buffer-settings-based-on-content ()
+  "Adjust buffer settings based on content size:
+- Increase text scale by 2 if the file does not exist or has fewer lines than `my/line-threshold'.
+- Enable line numbers if the buffer has more than `my/line-threshold' lines."
+  (when buffer-file-name  ; Only operate on buffers associated with a file
+    (if (or (not (file-exists-p buffer-file-name))
+            (< (count-lines (point-min) (point-max)) my/line-threshold))
+        (text-scale-increase 2))  ; Increase text size for small or non-existing files
+    (when (> (count-lines (point-min) (point-max)) my/line-threshold)
+      (display-line-numbers-mode 1))))  ; Enable line numbers for large files
 
+(add-hook 'find-file-hook 'my-adjust-buffer-settings-based-on-content)
 
 ;; Make certain buffers grossly incandescent
 ;; TODO Per theme configuration
 ;; (use-package solaire-mode
 ;;   :ensure t
 ;;   :config
-;;   (solaire-global-mode))
-
+;;   (solaire-global-mode)
+;;   )
 
 (use-package theme-magic
   :ensure t)
@@ -431,8 +784,7 @@ if not aborted,open it in a new window split vertically."
 
 
 ;; PRETTIFY SYMBOLS
-(global-prettify-symbols-mode 1)
-
+;; (global-prettify-symbols-mode 1)
 ;; (defun prettify-set ()
 ;;   (setq prettify-symbols-alist
 ;;         '(("lambda" . "λ")
@@ -446,7 +798,6 @@ if not aborted,open it in a new window split vertically."
 ;;           ;; ("=>"     . "⇒")
 ;;           )))
 ;; (add-hook 'prog-mode-hook 'prettify-set)
-
 
 
 
@@ -555,7 +906,6 @@ if not aborted,open it in a new window split vertically."
 	  ("DEPRECATED" font-lock-doc-face bold)
 	  ("LATER" font-lock-doc-face bold))))
 
-;; DEPRECATED 
 ;; (use-package moody
 ;;   :ensure t
 ;;   :config
@@ -573,6 +923,7 @@ if not aborted,open it in a new window split vertically."
         doom-modeline-persp-name t
         doom-modeline-persp-icon t))
 
+
 (use-package spacious-padding
   :ensure t
   :config
@@ -580,16 +931,35 @@ if not aborted,open it in a new window split vertically."
 
 
 ;;;; THEME
+;; kaolin modeline fix
+(set-face-attribute 'mode-line-active nil
+                    :background "#131316"
+                    :box '(:line-width (6 . 6) :color "#131316"))
 
-(use-package catppuccin-theme
+
+;; (set-face-attribute 'mode-line-inactive nil
+;;                     :background "#222225"
+;;                     :foreground "#222225"
+;;                     :box '(:line-width (6 . 6) :color "#222225"))
+
+;; TODO it doesnt work for the first theme loaded
+;; TODO all kaolin themes
+(defun my-post-load-theme (&rest args)
+  "Customize mode-line-highlight face attributes only for the kaolin-dark theme."
+  (let ((theme-name (car args)))  ; The first argument is the theme name
+    (when (eq theme-name 'kaolin-dark)
+      (set-face-attribute 'mode-line-highlight nil :box nil)
+      (set-face-attribute 'mode-line-active nil
+                          :background "#131316"
+                          :box '(:line-width (6 . 6) :color "#131316")))))
+
+(advice-add 'load-theme :after 'my-post-load-theme)
+
+
+;; WASHERE
+
+(use-package ef-themes
   :ensure t)
-
-(use-package timu-caribbean-theme
-  :ensure t)
-
-(use-package spacemacs-theme
-  :ensure t)
-
 
 (use-package doom-themes
   :ensure t
@@ -604,14 +974,11 @@ if not aborted,open it in a new window split vertically."
   (doom-themes-treemacs-config)
   (doom-themes-org-config))
 
- ;; (load-theme 'doom-material-dark t)
- (load-theme 'doom-material-dark t)
 
-(use-package kaolin-themes
-  :ensure t)
+(my-post-load-theme)
 
-(use-package ef-themes
-  :ensure t)
+;; (load-theme 'doom-material-dark t)
+
 
 
 (defvar dark-themes '(doom-badger doom-pine doom-laserwave doom-one doom-1337 doom-nord doom-dark+ doom-henna doom-opera doom-rouge doom-xcode
@@ -744,7 +1111,16 @@ if not aborted,open it in a new window split vertically."
   '((doom-one . doom-one-light)
     (doom-badger . doom-material-dark)
     (doom-nord . doom-nord-light)
-    (doom-dracula . doom-solarized-light)
+    (kaolin-valley-dark . kaolin-valley-light)
+    (kaolin-mono-dark . kaolin-mono-light)
+    (kaolin-dark . kaolin-light)
+    (doom-ayu-dark . doom-ayu-light)
+    (doom-one . doom-one-light)
+    (doom-nord . doom-nord-light)
+    (doom-plain . doom-plain-dark)
+    (doom-opera . doom-opera-light)
+    (doom-acario-dark . doom-acario-light)
+    (doom-blueloco-dark . doom-blueloco-light)
     (doom-solarized-dark . doom-solarized-light))
   "Pairs of dark and light themes.")
 
@@ -789,7 +1165,7 @@ if not aborted,open it in a new window split vertically."
 ;;          ("C-M-#" . jinx-languages)))
 
 
-;; TODO 'eshell' is not a popup when spawned
+;; ;; TODO 'eshell' is not a popup when spawned
 (use-package popper
   :ensure t
   :config
@@ -801,12 +1177,16 @@ if not aborted,open it in a new window split vertically."
   (setq popper-reference-buffers
         '(Custom-mode
           compilation-mode
+          magit-mode
+          magit-revision-mode
+          magit-log-mode
           messages-mode
           help-mode
           occur-mode
           eshell-mode
           "^\\*Warnings\\*"
           "^\\*Compile-Log\\*"
+          "^\\*rustic-compilation\\*"
           "^\\*HS-Error\\*"
           "^\\*shell\\*"
           "^\\*Messages\\*"
@@ -828,23 +1208,52 @@ if not aborted,open it in a new window split vertically."
 (add-hook 'popper-open-popup-hook 'my/popper-hide-modeline)
 
 (defun laluxx/hide-modeline-for-popups ()
-  "Hide the modeline in specific buffers."
-  (when (or (string= (buffer-name) "*Warnings*")
-            (string= (buffer-name) "*Compile-Log*")
-            (string= (buffer-name) "*ielm*")
-            (string= (buffer-name) "*shell*")
-            (string= (buffer-name) "*eshell*")
-            (string= (buffer-name) "*HS-Error*")
-            (string= (buffer-name) "*Help*")
-            (string= (buffer-name) "*Apropos*")
-            (string= (buffer-name) "*Disabled Command*")
-            (string= (buffer-name) "*Backtrace*")
-            (string= (buffer-name) "*compilation*")
-            (string= (buffer-name) "*Shell Command Output*")
-           )
-    (setq mode-line-format nil)))
+  "Hide the mode line in specific buffers and modes."
+  (let ((buffer-name (buffer-name)))
+    (when (or (member buffer-name '("*Warnings*"
+                                    "*Compile-Log*"
+                                    "*rustic-compilation*"
+                                    "*Embark Actions*"
+                                    "*ielm*"
+                                    "*shell*"
+                                    "*eshell*"
+                                    "*HS-Error*"
+                                    "*Help*"
+                                    "*Apropos*"
+                                    "*Disabled Command*"
+                                    "*Backtrace*"
+                                    "*compilation*"
+                                    "*Shell Command Output*"))
+              (derived-mode-p 'magit-log-mode
+                              'magit-revision-mode
+                              'eshell-mode
+                              'shell-mode
+                              'help-mode))
+      (setq mode-line-format nil))))
 
 (add-hook 'after-change-major-mode-hook 'laluxx/hide-modeline-for-popups)
+
+(add-hook 'buffer-list-update-hook 'laluxx/hide-modeline-for-popups)
+
+
+(defun set-popper-height-for-magit ()
+  "Set the popper-window-height to 30 when entering magit-revision-mode."
+  (when (derived-mode-p 'magit-revision-mode)
+    (customize-set-variable 'popper-window-height 30 "Set by entering magit-revision-mode.")
+    (popper-toggle)))
+
+(defun set-popper-height-for-log ()
+  "Set the popper-window-height to 15 when entering magit-log-mode."
+  (when (derived-mode-p 'magit-log-mode)
+    (customize-set-variable 'popper-window-height 15 "Set by entering magit-log-mode.")))
+
+(add-hook 'magit-revision-mode-hook 'set-popper-height-for-magit)
+(add-hook 'magit-log-mode-hook 'set-popper-height-for-log)
+
+
+
+
+
 
 ;; Why do i have to do it like this 
 (with-current-buffer "*Messages*"
@@ -878,14 +1287,15 @@ if not aborted,open it in a new window split vertically."
   ;; (define-key vertico-map (kbd "C-s") #'my-set-variable-via-embark)
   )
 
+(use-package embark-consult
+  :ensure t)
+
 (use-package embark
   :ensure t
   :bind
   ("C-." . embark-act)
   ("C-," . embark-become))
 
-(use-package embark-consult
-  :ensure t)
 
 (use-package vertico
   :ensure t
@@ -1037,7 +1447,6 @@ if not aborted,open it in a new window split vertically."
 
 ;;;; SHELL
 
-;; TODO 'C-c-C-j' dwim open on the bottom of the current buffer only
 ;; if you are in a vertical split
 (setq shell-file-name "/bin/bash")
 (add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
@@ -1053,24 +1462,18 @@ if not aborted,open it in a new window split vertically."
             (local-set-key (kbd "C-l") 'comint-clear-buffer)))
 
 
-(defun toggle-shell ()
-  (interactive)
-  (if (get-buffer "*shell*")
-      (if (equal (current-buffer) (get-buffer "*shell*"))
-          (bury-buffer)
-        (shell))
-    (shell)))
-
-(global-set-key (kbd "C-c C-j") 'toggle-shell)
-
-
-
-
-
-
-
-
 ;;;; ESHELL
+
+(defun laluxx/toggle-eshell ()
+  (interactive)
+  (if (get-buffer "*eshell*")
+      (if (equal (current-buffer) (get-buffer "*eshell*"))
+          (bury-buffer)
+        (eshell))
+    (eshell)))
+
+(global-set-key (kbd "C-c C-j") 'laluxx/toggle-eshell)
+
 (use-package eshell
   :ensure t
   :defines eshell-prompt-function
@@ -1207,12 +1610,15 @@ if not aborted,open it in a new window split vertically."
 ;; (eshell-add-color-word "DEBUG" 'font-lock-comment-face)
 
 
+
+;; TODO important load only when
+;; opening a file that need that mode
+
 ;;;; LANGUAGES
 
 ;; LISP
 
 (setq inferior-lisp-program "clisp")
-
 
 ;; LISP Configuration with enhanced SLY interaction
 (use-package sly
@@ -1269,8 +1675,6 @@ if not aborted,open it in a new window split vertically."
 ;; (use-package tree-sitter-langs
 ;;   :ensure t)
 
-
-
 (use-package haskell-mode
   :ensure t
   :config
@@ -1295,16 +1699,12 @@ if not aborted,open it in a new window split vertically."
 
 
 
-
-
-
-
 ;; OCAML
-(use-package tuareg
-  :ensure t)
+;; (use-package tuareg
+;;   :ensure t)
 
-(use-package dune
-  :ensure t)
+;; (use-package dune
+;;   :ensure t)
 
 ;; TODO those 2 dont compile on arch
 ;; (use-package utop
@@ -1314,12 +1714,10 @@ if not aborted,open it in a new window split vertically."
 ;;   :ensure t)
 
 
-
-
 ;; JSON
 
-(use-package json-mode
-  :ensure t)
+;; (use-package json-mode
+;;   :ensure t)
 
 
 
@@ -1329,9 +1727,10 @@ if not aborted,open it in a new window split vertically."
   (define-key emacs-lisp-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config)
   (define-key lisp-interaction-mode-map (kbd "M-TAB") 'eyebrowse-last-window-config))
 
-
 (add-hook 'emacs-lisp-mode-hook 'laluxx/setup-emacs-lisp-keys)
 (add-hook 'lisp-interaction-mode-hook 'laluxx/setup-emacs-lisp-keys)
+
+
 
 ;; C
 (setq-default c-basic-offset 4
@@ -1350,12 +1749,12 @@ if not aborted,open it in a new window split vertically."
 
 ;; TODO enabled lang packages when a .lua file is opened 
 ;; LUA
-;; (use-package lua-mode
-;;   :ensure t)
+(use-package lua-mode
+  :ensure t)
 
 ;; ZIG
-;; (use-package zig-mode
-;;   :ensure t)
+(use-package zig-mode
+  :ensure t)
 
 ;; (use-package lsp-haskell
 ;;   :ensure t)
@@ -1416,7 +1815,7 @@ if not aborted,open it in a new window split vertically."
 
 
 (global-set-key (kbd "C-c C-g") 'xref-find-definitions)
-(global-set-key (kbd "C-x C-c") 'quick-calc)
+(global-set-key (kbd "C-x C-a") 'quick-calc)
 
 
 (use-package shut-up
@@ -1426,10 +1825,32 @@ if not aborted,open it in a new window split vertically."
   :ensure t)
 
 
-
 ;; RUST
+;; TODO goofy ahh faces
+
 (use-package rustic
-  :ensure t )
+  :ensure t
+  :config
+  ;; (custom-set-faces
+  ;;  '(rustic-compilation-info ((t (:inherit compilation-info))))
+  ;;  '(rustic-compilation-warning ((t (:inherit compilation-warning))))
+  ;;  '(rustic-compilation-error ((t (:inherit compilation-error))))
+  ;;  '(rustic-compilation-line ((t (:inherit compilation-line))))
+  ;;  '(rustic-compilation-column ((t (:inherit compilation-column-number))))
+  ;;  '(rustic-message ((t (:inherit default))))
+  ;; )
+  ;; (setq rustic-ansi-faces
+  ;;     (vector 'default                   ; black - use default face for standard text
+  ;;             'compilation-error         ; red - map to compilation error face
+  ;;             'compilation-info          ; green - map to compilation info face
+  ;;             'compilation-warning          ; yellow - map to compilation line face
+  ;;             'compilation-line    ; blue - use syntax highlighting for keywords
+  ;;             'compilation-warning       ; magenta - map to compilation warning face
+  ;;             'font-lock-type-face       ; cyan - use syntax highlighting for types
+  ;;             'default))        ; white - map to compilation info for bright text
+)
+
+
 
 
 ;;;; BACKUP
@@ -1437,9 +1858,39 @@ if not aborted,open it in a new window split vertically."
 
 
 ;;;; DIRED
-(setq dired-listing-switches
-      "-l --almost-all --human-readable --time-style=long-iso --group-directories-first --no-group")
 
+(defun laluxx/dired-jump-or-kill ()
+  "Jump to Dired buffer in another window or kill the Dired buffer if already in one."
+  (interactive)
+  (if (eq major-mode 'dired-mode)
+      (progn
+        (kill-this-buffer)
+        (delete-window))
+    (dired-jump-other-window)))
+
+(global-set-key (kbd "C-x C-l") 'laluxx/dired-jump-or-kill)
+
+(defun laluxx/dired-dwim ()
+  "Toggle the modeline, split the window below, and open dired in the new split.
+If called from a dired buffer, kill the buffer and the window, then toggle the modeline.
+If there are 2 or more windows and the current buffer is not a dired buffer, just call `dired-jump`."
+  (interactive)
+  (if (eq major-mode 'dired-mode)
+      (progn
+        (kill-buffer)
+        (delete-window)
+        (toggle-modeline))
+    (if (>= (length (window-list)) 2)
+        (dired-jump)
+      (progn
+        (toggle-modeline)
+        (split-window-below)
+        (other-window 1)
+        (dired nil)))))
+
+(global-set-key (kbd "C-x C-j") 'laluxx/dired-dwim)
+
+;;; DIRVISH
 ;; (use-package dirvish
 ;;   :ensure t
 ;;   :config
@@ -1454,12 +1905,16 @@ if not aborted,open it in a new window split vertically."
 ;;   (dirvish-override-dired-mode))
 
 ;; TODO This is not the correct hook
-(defun enable-diredfl-for-dirvish-preview ()
-  "Enable `diredfl-mode` in Dirvish preview buffers."
-  (when (string-match-p "\\*Dirvish-preview-.*\\*" (buffer-name))
-    (diredfl-mode 1)))
+;; (defun enable-diredfl-for-dirvish-preview ()
+;;   "Enable `diredfl-mode` in Dirvish preview buffers."
+;;   (when (string-match-p "\\*Dirvish-preview-.*\\*" (buffer-name))
+;;     (diredfl-mode 1)))
 
-(add-hook 'after-change-major-mode-hook 'enable-diredfl-for-dirvish-preview)
+;; (add-hook 'after-change-major-mode-hook 'enable-diredfl-for-dirvish-preview)
+
+
+(setq dired-listing-switches
+      "-l --almost-all --human-readable --time-style=long-iso --group-directories-first --no-group")
 
 (use-package diredfl
   :ensure t
@@ -1514,6 +1969,15 @@ if not aborted,open it in a new window split vertically."
 (use-package wdired
   :ensure t)
 
+
+(defun set-text-scale-based-on-line-count ()
+  "Adjust text scale in Dired based on the number of lines in the buffer."
+  (when (eq major-mode 'dired-mode)
+    (let ((line-count (count-lines (point-min) (point-max))))
+      (cond ((< line-count 10) (text-scale-set 2))   ; Larger text for very few lines
+            ((< line-count 30) (text-scale-set 1))   ; Slightly larger text for moderately few lines
+            (t (text-scale-set 0))))))                ; Default scale for more lines
+
 (defun my-dired-mode-setup ()
   "Custom keybindings and settings for `dired-mode`."
   (define-key dired-mode-map (kbd "b") 'dired-up-directory)
@@ -1528,9 +1992,11 @@ if not aborted,open it in a new window split vertically."
   (define-key dired-mode-map (kbd "i") 'wdired-change-to-wdired-mode)
   (define-key dired-mode-map (kbd "F") 'find-file)
   (auto-revert-mode 1)
-  )
+  (add-hook 'dired-after-readin-hook #'set-text-scale-based-on-line-count nil t))
 
 (add-hook 'dired-mode-hook 'my-dired-mode-setup)
+
+
 
 
 ;;;; ISEARCH
@@ -1584,6 +2050,7 @@ if not aborted,open it in a new window split vertically."
 
 
 ;; TODO stop blink and line cursor
+;; TODO dont ask for anything
 (use-package multiple-cursors
   :ensure t
   :config
@@ -1665,8 +2132,7 @@ Extend the selection if shift is held."
             (backward-kill-word 1)))
       (backward-kill-word 1))))  ; Fallback to killing a whole word
 
-(global-set-key (kbd "C-c C-k") 'laluxx/backward-kills-word)
-
+;; (global-set-key (kbd "C-c C-k") 'laluxx/backward-kills-word)
 
 
 
@@ -1726,10 +2192,6 @@ Otherwise, evaluate the last s-expression before the point."
       (progn
         (yank)
         (indent-region start (point))))))  ; Always indent for a regular yank.
-
-
-
-
 
 
 (defun laluxx/kill-line-or-kill-region ()
@@ -1848,6 +2310,28 @@ Otherwise, evaluate the last s-expression before the point."
 
 ;;;; FUNCTIONS
 
+;; PAGES
+
+;; TODO laluxx/mark-page ()
+(defun laluxx/open-page ()
+  "Simulates a series of keypresses to insert special characters and manipulate lines."
+  (interactive)
+  (insert "\f")  ; Inserts the form feed character directly
+  (newline)      ; Inserts a newline
+  (insert "\f")  ; Again inserts the form feed character
+  (move-beginning-of-line 1)  ; Moves to the beginning of the line
+  (open-line 1))             ; Opens a new line above the current line
+
+(global-set-key (kbd "C-c o") 'laluxx/open-page)
+
+
+(defun my-find-file-hook ()
+  "Increase text scale by 2 if the file does not exist."
+  (unless (file-exists-p buffer-file-name)
+    (text-scale-increase 2)))
+
+(add-hook 'find-file-hook 'my-find-file-hook)
+
 
 
 ;; SELECTION
@@ -1921,8 +2405,6 @@ it marks the next ARG lines after the ones already marked."
 
 ;; EVAL
 
-;; TODO copy that appends to the clipboard
-
 (defun laluxx/insert-or-evaluate-region ()
   "Insert the character 'e' if no active region, otherwise evaluate the region and then deactivate the region."
   (interactive)
@@ -1933,27 +2415,26 @@ it marks the next ARG lines after the ones already marked."
     (insert "e")))
 
 (defun laluxx/smart-eval-region (start end)
-  "Evaluate the region as if it wasn't commented.
-The region is from START to END."
+  "Evaluate the region as if it wasn't commented. Then saves the buffer silently."
   (interactive "r")
-  (let ((content (buffer-substring start end)))
-    ;; Uncomment the content temporarily
-    (with-temp-buffer
-      (insert content)
-      (goto-char (point-min))
-      (while (comment-forward (point-max))
-        (uncomment-region (line-beginning-position) (line-end-position)))
-      ;; Evaluate the uncommented content
-      (eval-buffer)))
-  (message "DONE"))  ; Moved the message here to ensure it prints after evaluation
+  (save-excursion
+    (save-restriction
+      (narrow-to-region start end)
+      (let ((original-content (buffer-substring start end)))
+        ;; Uncomment the region
+        (goto-char (point-min))
+        (while (re-search-forward "^[[:space:]]*;;" nil t)
+          (replace-match ""))
+        ;; Evaluate the uncommented content
+        (eval-region (point-min) (point-max))
+        ;; Replace original content to restore comments
+        (delete-region (point-min) (point-max))
+        (insert original-content)
+        ;; Save the buffer silently
+        (let ((inhibit-message t))
+          (save-buffer))))))
 
-
-
-
-;; TODO 'C-M-S-h' backward-mark-defun
-;; TODO one backward should do -1 a mark-defun
-;; (global-set-key (kbd "C-M-H") (lambda () (interactive) (mark-defun -1)))
-
+;; (message "HELLO")
 
 
 ;; EDITING
@@ -2294,10 +2775,7 @@ managers such as DWM, BSPWM refer to this state as 'monocle'."
     (setq laluxx/window-configuration (current-window-configuration))
     (delete-other-windows)))
 
-(global-set-key (kbd "M-SPC") 'laluxx/window-single-toggle)
-
-
-
+;; (global-set-key (kbd "M-SPC") 'laluxx/window-single-toggle)
 
 
 ;; EXWM TODO
@@ -2373,6 +2851,14 @@ managers such as DWM, BSPWM refer to this state as 'monocle'."
 ;;   (exwm-enable))
 
 ;;;; SCRATCH BUFFER
+
+(defun my-adjust-text-scale-in-scratch ()
+  "Increase text scale by 2 in the *scratch* buffer."
+  (with-current-buffer "*scratch*"
+    (text-scale-increase 2)))
+
+(add-hook 'emacs-startup-hook 'my-adjust-text-scale-in-scratch)
+
 (defun save-scratch-buffer-to-file ()
   "Save the contents of *scratch* buffer to a specific file, ensuring directory exists."
   (let ((scratch-file "~/.config/emacs/scratch"))
@@ -2466,7 +2952,6 @@ managers such as DWM, BSPWM refer to this state as 'monocle'."
 
 ;;;; EWW
 
-
 (defun my-eww-mode-setup ()
   "Set up EWW with custom settings."
   (olivetti-mode 1)
@@ -2484,49 +2969,69 @@ managers such as DWM, BSPWM refer to this state as 'monocle'."
      (message "Emacs started in %.2fs" (- elapsed 1)))))
 
 
+;; (custom-set-variables
+;;  ;; custom-set-variables was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(git-gutter:added-sign "█")
+;;  '(git-gutter:deleted-sign "█")
+;;  '(git-gutter:modified-sign "█")
+;;  '(package-selected-packages
+;;    '(all-the-icons-completion catppuccin-theme compiler-explorer
+;;                               consult-flycheck consult-lsp corfu
+;;                               diff-hl diminish diredfl doom-modeline
+;;                               drag-stuff ef-themes elfeed
+;;                               embark-consult esh-help
+;;                               eshell-prompt-extras eshell-z evil
+;;                               ewal-doom-themes eyebrowse focus
+;;                               geiser-guile general glsl-mode
+;;                               haskell-mode helpful hl-todo iedit
+;;                               iscroll kaolin-themes kind-icon ligature
+;;                               lsp-ui magit marginalia multiple-cursors
+;;                               nerd-icons-dired olivetti orderless
+;;                               page-break-lines popper
+;;                               rainbow-delimiters rainbow-mode rustic
+;;                               shut-up sly solaire-mode spacemacs-theme
+;;                               spacious-padding suggest theme-magic
+;;                               timu-caribbean-theme vertico vundo
+;;                               which-key zig-mode))
+;;  '(package-vc-selected-packages
+;;    '((doom-dashboard :url
+;;                      "https://github.com/emacs-dashboard/doom-dashboard.git"))))
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(all-the-icons-completion catppuccin-theme consult-flycheck
-                              consult-lsp corfu diminish diredfl
-                              doom-modeline drag-stuff dune ef-themes
-                              elfeed embark-consult esh-help
-                              eshell-prompt-extras eshell-z evil
-                              ewal-doom-themes eyebrowse geiser-guile
-                              general glsl-mode haskell-mode helpful
-                              hl-todo iedit iscroll json-mode
-                              kaolin-themes kind-icon ligature lsp-ui
-                              magit marginalia multiple-cursors
-                              nerd-icons-dired olivetti orderless
-                              page-break-lines popper
-                              rainbow-delimiters rainbow-mode rustic
-                              shut-up sly smooth-scrolling
-                              spacemacs-theme spacious-padding suggest
-                              theme-magic timu-caribbean-theme tuareg
-                              vertico which-key)))
+ '(package-selected-packages nil)
+ '(package-vc-selected-packages
+   '((doom-dashboard :url
+                     "https://github.com/emacs-dashboard/doom-dashboard.git"))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(fringe ((t :background "#212121")))
- '(header-line ((t :box (:line-width 4 :color "grey20" :style nil))))
- '(header-line-highlight ((t :box (:color "#C5C8C6"))))
+ '(fringe ((t :background "#1a1a25")))
+ '(header-line ((t :box (:line-width 4 :color "#1a1a25" :style nil))))
+ '(header-line-highlight ((t :box (:color "#F6F3E8"))))
  '(keycast-key ((t)))
- '(line-number ((t :background "#212121")))
- '(mode-line ((t :box (:line-width 6 :color "grey75" :style nil))))
- '(mode-line-active ((t :box (:line-width 6 :color "grey75" :style nil))))
- '(mode-line-highlight ((t :box (:color "#C5C8C6"))))
- '(mode-line-inactive ((t :box (:line-width 6 :color "grey30" :style nil))))
- '(tab-bar-tab ((t :box (:line-width 4 :color "grey85" :style nil))))
- '(tab-bar-tab-inactive ((t :box (:line-width 4 :color "grey75" :style nil))))
+ '(line-number ((t :background "#1a1a25")))
+ '(mode-line ((t :box (:line-width 6 :color "#252534" :style nil))))
+ '(mode-line-active ((t (:box (:line-width (6 . 6) :color "#131316")))))
+ '(mode-line-highlight ((t (:foreground "#68f3ca" :weight normal))))
+ '(mode-line-inactive ((t :box (:line-width 6 :color "#252534" :style nil))))
+ '(rustic-compilation-column ((t (:inherit compilation-column-number))))
+ '(rustic-compilation-line ((t (:foreground "LimeGreen"))))
+ '(tab-bar-tab ((t :box (:line-width 4 :color "#1a1a25" :style nil))))
+ '(tab-bar-tab-inactive ((t :box (:line-width 4 :color "#1a1a25" :style nil))))
  '(tab-line-tab ((t)))
  '(tab-line-tab-active ((t)))
  '(tab-line-tab-inactive ((t)))
- '(vertical-border ((t :background "#212121" :foreground "#212121")))
- '(window-divider ((t (:background "#212121" :foreground "#212121"))))
- '(window-divider-first-pixel ((t (:background "#212121" :foreground "#212121"))))
- '(window-divider-last-pixel ((t (:background "#212121" :foreground "#212121")))))
+ '(vertical-border ((t :background "#1a1a25" :foreground "#1a1a25")))
+ '(window-divider ((t (:background "#1a1a25" :foreground "#1a1a25"))))
+ '(window-divider-first-pixel ((t (:background "#171717" :foreground "#171717"))))
+ '(window-divider-last-pixel ((t (:background "#171717" :foreground "#171717")))))
+

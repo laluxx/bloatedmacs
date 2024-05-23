@@ -3,11 +3,11 @@
 
 (setq mc/cmds-to-run-for-all
       '(
-        dired-next-line
-        wdired--self-insert
-        wdired-change-to-wdired-mode
+        laluxx/insert-or-evaluate-region
+        multiple-cursors-mode
         ))
 
 (setq mc/cmds-to-run-once
       '(
+        my-dashboard-safe-delete-backward
         ))
